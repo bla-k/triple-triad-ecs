@@ -1,0 +1,110 @@
+1,Geezard,1,4,1,5,None
+1,Funguar,5,1,1,3,None
+1,Bite Bug,1,3,3,5,None
+1,Red Bat,6,1,1,2,None
+1,Blobra,2,3,1,5,None
+1,Gayla,2,1,4,4,Thunder
+1,Gesper,1,5,4,1,None
+1,Fastitocalon-F,3,5,2,1,Earth
+1,Blood Soul,2,1,6,1,None
+1,Caterchipillar,4,2,4,3,None
+1,Cockatrice,2,1,2,6,Thunder
+2,Grat,7,1,3,1,None
+2,Buel,6,2,2,3,None
+2,Mesmerize,5,3,3,4,None
+2,Glacial Eye,6,1,4,3,Ice
+2,Belhelmel,3,4,5,3,None
+2,Thrustaevis,5,3,2,5,Wind
+2,Anacondaur,5,1,3,5,Poison
+2,Creeps,5,2,5,2,Thunder
+2,Grendel,4,4,5,2,Thunder
+2,Jelleye,3,2,1,7,None
+2,Grand Mantis,5,2,5,3,None
+3,Forbidden,6,6,3,2,None
+3,Armadodo,6,3,1,6,Earth
+3,Tri-Face,3,5,5,5,Poison
+3,Fastitocalon,7,5,1,3,Earth
+3,Snow Lion,7,1,5,3,Ice
+3,Ochu,5,6,3,3,None
+3,SAM08G,5,6,2,4,Fire
+3,Death Claw,4,4,7,2,Fire
+3,Cactuar,6,2,6,3,None
+3,Tonberry,3,6,4,4,None
+3,Abyss Worm,7,2,3,5,Earth
+4,Turtapod,2,3,6,7,None
+4,Vysage,6,5,4,5,None
+4,T-Rexaur,4,6,2,7,None
+4,Bomb,2,7,6,3,Fire
+4,Blitz,1,6,4,7,Thunder
+4,Wendigo,7,3,1,6,None
+4,Torama,7,4,4,4,None
+4,Imp,3,7,3,6,None
+4,Blue Dragon,6,2,7,3,Poison
+4,Adamantoise,4,5,5,6,Earth
+4,Hexadragon,7,5,4,3,Fire
+5,Iron Giant,6,5,6,5,None
+5,Behemoth,3,6,5,7,None
+5,Chimera,7,6,5,3,Water
+5,PuPu,3,10,2,1,None,
+5,Elastoid,6,2,6,7,None
+5,GIM47N,5,5,7,4,None
+5,Malboro,7,7,4,2,Poison
+5,Ruby Dragon,7,2,7,4,Fire
+5,Elnoyle,5,3,7,6,None
+5,Tonberry King,4,6,7,4,None
+5,Wedge Biggs,6,6,2,7,None
+6,Fujin Raijin,2,8,8,4,None
+6,Elvoret,7,8,3,4,Wind
+6,X-ATM092,4,8,7,3,None
+6,Granaldo,7,2,8,5,None
+6,Gerogero,1,8,8,3,Poison
+6,Iguion,8,2,8,2,None
+6,Abadon,6,8,4,5,None
+6,Trauma,4,8,5,6,None
+6,Oilboyle,1,8,4,8,None
+6,Shumi Tribe,6,5,8,4,None
+6,Krysta,7,5,8,1,None
+7,Propagator,8,4,4,8,None
+7,Jumbo Cactuar,8,8,4,4,None
+7,Tri-Point,8,5,2,8,Thunder
+7,Gargantua,5,6,6,8,None
+7,Mobile Type 8,8,6,7,3,None
+7,Sphinxara,8,3,5,8,None
+7,Tiamat,8,8,5,4,None
+7,BGH251F2,5,7,8,5,None
+7,Red Giant,6,8,4,7,None
+7,Catoblepas,1,8,7,7,None
+7,Ultima Weapon,7,7,2,8,None
+8,Chubby Chocobo,4,4,8,9,None
+8,Angelo,9,6,7,3,None
+8,Gilgamesh,3,7,9,6,None
+8,MiniMog,9,3,9,2,None
+8,Chicobo,9,4,8,4,None
+8,Quezacotl,2,9,9,4,Thunder
+8,Shiva,6,7,4,9,Ice
+8,Ifrit,9,6,2,8,Fire
+8,Siren,8,9,6,2,None
+8,Sacred,5,1,9,9,Earth
+8,Minotaur,9,5,2,9,Earth
+9,Carbuncle,8,4,10,4,None
+9,Diablos,5,10,8,3,None
+9,Leviathan,7,10,1,7,Water
+9,Odin,8,10,3,5,None
+9,Pandemona,10,1,7,7,Wind
+9,Cerberus,7,4,6,10,None
+9,Alexander,9,10,4,2,Holy
+9,Phoenix,7,2,7,10,Fire
+9,Bahamut,10,8,2,6,None
+9,Doomtrain,3,1,10,10,Poison
+9,Eden,4,4,9,10,None
+10,Ward,10,7,2,8,None
+10,Kiros,6,7,6,10,None
+10,Laguna,5,10,3,9,None
+10,Selphie,10,8,6,4,None
+10,Quistis,9,6,10,2,None
+10,Irvine,2,6,9,10,None
+10,Zell,8,5,10,6,None
+10,Rinoa,4,10,2,10,None
+10,Edea,10,10,3,3,None
+10,Seifer,6,9,10,4,None
+10,Squall,10,4,6,9,None
