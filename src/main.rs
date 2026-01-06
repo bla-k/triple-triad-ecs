@@ -33,7 +33,7 @@ use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
     game::{self, Game},
-    sdl::{AssetLibrary, AssetManager, SdlSystems},
+    sdl::{AssetManager, SdlSystems},
     systems::{
         director_system, flip_system, input_system, placement_system, render_system, rule_system,
         selection_system, win_system,
@@ -52,17 +52,20 @@ fn main() -> Result<(), String> {
     } = SdlSystems::init()?;
 
     let mut asset_manager = AssetManager::default();
+    asset_manager.load_font(&texture_creator, "assets/font.png")?;
     let t_cards = asset_manager.load_texture(&texture_creator, "assets/cards.png")?;
+    let t_ui = asset_manager.load_texture(&texture_creator, "assets/ui.png")?;
     #[cfg_attr(any(), rustfmt::skip)]
     {
-        asset_manager.define_sprite("cell",             t_cards, Rect::new(  0, 0, 128, 128));
-        asset_manager.define_sprite("card-bg",          t_cards, Rect::new(128, 0, 128, 128));
-        asset_manager.define_sprite("card-border",      t_cards, Rect::new(256, 0, 128, 128));
-        asset_manager.define_sprite("card-body-light",  t_cards, Rect::new(384, 0, 128, 128));
-        asset_manager.define_sprite("card-border-dark", t_cards, Rect::new(512, 0, 128, 128));
+        asset_manager.define_sprite("cell",             t_cards, Rect::new(  0,  0, 128, 128));
+        asset_manager.define_sprite("card-bg",          t_cards, Rect::new(128,  0, 128, 128));
+        asset_manager.define_sprite("card-border",      t_cards, Rect::new(256,  0, 128, 128));
+        asset_manager.define_sprite("card-body-light",  t_cards, Rect::new(384,  0, 128, 128));
+        asset_manager.define_sprite("card-border-dark", t_cards, Rect::new(512,  0, 128, 128));
+        asset_manager.define_sprite("cursor",           t_ui,    Rect::new(  0,  0,   9,  17));
+        asset_manager.define_sprite("stats-back",       t_ui,    Rect::new(  9,  0,  17,  17));
+        asset_manager.define_sprite("stats-border",     t_ui,    Rect::new( 26,  0,  17,  17));
     }
-
-    let mut assets = AssetLibrary::new(&texture_creator)?;
 
     let mut events: VecDeque<game::Event> = VecDeque::new();
     let mut game = Game::init();
@@ -97,7 +100,6 @@ fn main() -> Result<(), String> {
         render_system(
             &mut canvas,
             &ui,
-            &mut assets,
             &mut asset_manager,
             &game.turn,
             &game.cursor,
@@ -120,60 +122,6 @@ fn main() -> Result<(), String> {
             break 'running;
         }
     }
-
-    //'running: loop {
-    //    input_system(&mut event_pump, &mut events);
-
-    //    if quit_system(&events) {
-    //        break 'running;
-    //    }
-
-    //    selection_system(
-    //        &mut events,
-    //        game.resources.turn,
-    //        &mut game.resources.interaction,
-    //        &game.world.components,
-    //    );
-    //    placement_system(
-    //        &mut events,
-    //        &game.resources.board,
-    //        &mut game.resources.interaction,
-    //    );
-    //    board_state_system(
-    //        &mut events,
-    //        game.resources.turn,
-    //        &game.resources.interaction,
-    //        &mut game.world.components.position,
-    //        &game.world.components.owner,
-    //    );
-    //    rule_system(
-    //        &mut events,
-    //        &game.resources.interaction,
-    //        &game.world.components,
-    //        &card_db,
-    //    );
-    //    flip_system(
-    //        &events,
-    //        &game.resources.interaction,
-    //        &mut game.world.components.owner,
-    //    );
-    //    // TODO refactor
-    //    render_system(
-    //        &mut canvas,
-    //        &ui,
-    //        &assets,
-    //        &game.resources,
-    //        &game.world.components,
-    //        &card_db,
-    //    )?;
-    //    director_system(
-    //        &events,
-    //        &mut game.resources.turn,
-    //        &mut game.resources.interaction,
-    //    );
-
-    //    events.clear();
-    //}
 
     Ok(())
 }

@@ -92,19 +92,19 @@ impl Default for Card {
 
 /// Stats geometry, to be considered relative to current card's Rect.
 pub struct Stats {
-    pub top: Rect,
-    pub rgt: Rect,
-    pub btm: Rect,
-    pub lft: Rect,
+    pub top: (i32, i32),
+    pub rgt: (i32, i32),
+    pub btm: (i32, i32),
+    pub lft: (i32, i32),
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Stats {
-            top: Rect::new(8, 8, 9, 11),
-            rgt: Rect::new(8 + 5, 8 + 11, 9, 11),
-            lft: Rect::new(8 - 5, 8 + 11, 9, 11),
-            btm: Rect::new(8, 8 + 11 + 11, 9, 11),
+            top: (28, 12),
+            rgt: (44, 21),
+            btm: (28, 32),
+            lft: (12, 22),
         }
     }
 }
