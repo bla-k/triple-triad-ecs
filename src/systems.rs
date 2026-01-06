@@ -6,7 +6,7 @@ use crate::{
     sdl::AssetManager,
     ui::{Theme, UI},
 };
-use sdl2::{EventPump, keyboard::Keycode, pixels::Color, render::Canvas, video::Window};
+use sdl2::{keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window, EventPump};
 use std::collections::VecDeque;
 
 #[rustfmt::skip]
@@ -53,21 +53,26 @@ pub fn selection_system(
 
     let maxlen = hand_size(player, owner, position);
 
-    #[cfg_attr(any(), rustfmt::skip)]
+    let mut card_selected = false;
     for evt in events.iter() {
         match (evt, cursor.as_mut()) {
             (game::Event::SelectCursorDown, Some(Position::Hand(j))) => *j = (*j + 1) % maxlen,
-            (game::Event::SelectCursorUp, Some(Position::Hand(j))) => *j = ((*j as isize - 1) as usize).rem_euclid(maxlen),
-            (game::Event::SelectCard, Some(Position::Hand(j))) => {
-                *selection = get_owned_entity(player, &Position::Hand(*j), owner, position);
+            (game::Event::SelectCursorUp, Some(Position::Hand(j))) => {
+                *j = (*j as isize - 1).rem_euclid(maxlen as isize) as usize
             }
+            (game::Event::SelectCard, Some(Position::Hand(_))) => card_selected = true,
 
             _ => {}
         }
     }
 
-    if selection.is_some() {
-        eprintln!("Selection -> CardSelected");
+    // always update selection by reading current cursor, so on player's turn start the preset
+    // `Hand(0)` card appears selected
+    if let Some(Position::Hand(j)) = cursor {
+        *selection = get_owned_entity(player, &Position::Hand(*j), owner, position);
+    }
+
+    if selection.is_some() && card_selected {
         events.push_back(game::Event::CardSelected);
     }
 }
@@ -89,13 +94,20 @@ pub fn placement_system(
     };
 
     let mut place_dst: Option<Position> = None;
-    #[cfg_attr(any(), rustfmt::skip)]
     for evt in events.iter() {
         match (evt, cursor.as_mut()) {
-            (game::Event::PlaceCursorDown, Some(Position::Board(_, y))) => *y = (*y + 1) % GRID_SIZE,
-            (game::Event::PlaceCursorLeft, Some(Position::Board(x, _))) => *x = ((*x as isize - 1) as usize).rem_euclid(GRID_SIZE),
-            (game::Event::PlaceCursorRight, Some(Position::Board(x, _))) => *x = (*x + 1) % GRID_SIZE,
-            (game::Event::PlaceCursorUp, Some(Position::Board(_, y))) => *y = ((*y as isize - 1) as usize).rem_euclid(GRID_SIZE),
+            (game::Event::PlaceCursorDown, Some(Position::Board(_, y))) => {
+                *y = (*y + 1) % GRID_SIZE
+            }
+            (game::Event::PlaceCursorLeft, Some(Position::Board(x, _))) => {
+                *x = (*x as isize - 1).rem_euclid(GRID_SIZE as isize) as usize
+            }
+            (game::Event::PlaceCursorRight, Some(Position::Board(x, _))) => {
+                *x = (*x + 1) % GRID_SIZE
+            }
+            (game::Event::PlaceCursorUp, Some(Position::Board(_, y))) => {
+                *y = (*y as isize - 1).rem_euclid(GRID_SIZE as isize) as usize
+            }
             (game::Event::PlaceCard, Some(Position::Board(x, y))) => {
                 let position = Position::Board(*x, *y);
                 // the destination cell is not occupied
@@ -103,7 +115,6 @@ pub fn placement_system(
                     place_dst = Some(position);
                 }
             }
-            //(game::Event::CardDeselected, _) => return,
 
             _ => {}
         }
@@ -267,6 +278,7 @@ pub fn render_system(
     asset_manager: &mut AssetManager,
     turn: &Option<Player>,
     cursor: &Option<Position>,
+    active_entity: Option<Entity>,
     components: &Components,
     card_db: &CardDb,
 ) -> Result<(), String> {
@@ -288,18 +300,79 @@ pub fn render_system(
 
     // render cards
     for entity in 0..10 {
-        render_card(canvas, entity, ui, asset_manager, components, card_db)?;
+        render_card(
+            canvas,
+            entity,
+            ui,
+            active_entity,
+            asset_manager,
+            components,
+            card_db,
+        )?;
     }
 
+    // render cursor
     if let Some(cursor) = cursor {
-        canvas.set_draw_color(Color::RGB(255, 255, 0));
-        if let Some(rect) = match (turn, cursor) {
-            (Some(Player::P1), Position::Hand(j)) => Some(ui.layout.hand.p1[*j]),
-            (Some(Player::P2), Position::Hand(j)) => Some(ui.layout.hand.p2[*j]),
-            (_, Position::Board(x, y)) => Some(ui.layout.board[*y * 3 + *x]),
-            _ => None,
-        } {
-            canvas.draw_rect(rect.right_shifted(10).bottom_shifted(10))?;
+        match (turn, cursor) {
+            // cursor to the right of the card
+            (Some(Player::P1), Position::Hand(j)) => {
+                let s_cursor = asset_manager.get_sprite("cursor").unwrap();
+                let t_cursor = asset_manager.get_texture_mut(s_cursor.texture_id).unwrap();
+                t_cursor.set_color_mod(fg.r, fg.g, fg.b);
+
+                let card_rect = ui.layout.hand.p1[*j];
+                let cursor_rect = Rect::new(
+                    card_rect.x() + card_rect.width() as i32 + 24,
+                    card_rect.y() + (card_rect.height() / 2) as i32
+                        - (s_cursor.region.height() / 2) as i32,
+                    s_cursor.region.width(),
+                    s_cursor.region.height(),
+                );
+
+                canvas.copy(t_cursor, s_cursor.region, cursor_rect)?;
+
+                t_cursor.set_color_mod(255, 255, 255);
+            }
+
+            // flipped cursor to the left of the card
+            (Some(Player::P2), Position::Hand(j)) => {
+                let s_cursor = asset_manager.get_sprite("cursor").unwrap();
+                let t_cursor = asset_manager.get_texture_mut(s_cursor.texture_id).unwrap();
+                t_cursor.set_color_mod(fg.r, fg.g, fg.b);
+
+                let card_rect = ui.layout.hand.p2[*j];
+                let cursor_rect = Rect::new(
+                    card_rect.x() - 34,
+                    card_rect.y() + (card_rect.height() / 2) as i32
+                        - (s_cursor.region.height() / 2) as i32,
+                    s_cursor.region.width(),
+                    s_cursor.region.height(),
+                );
+
+                canvas.copy_ex(
+                    t_cursor,
+                    s_cursor.region,
+                    cursor_rect,
+                    0.0,
+                    None,
+                    true,
+                    false,
+                )?;
+
+                t_cursor.set_color_mod(255, 255, 255);
+            }
+
+            // cursor highlighting the center of the cell
+            (_, Position::Board(x ,y)) => {
+                let j = *y * 3 + *x; // FIXME magic number
+                let card_rect = ui.layout.board[j];
+                let mut cursor = card_rect.left_shifted(8).top_shifted(8);
+                cursor.resize(card_rect.width() + 16, card_rect.height() + 16);
+
+                canvas.set_draw_color(fg);
+                canvas.draw_rect(cursor)?;
+            }
+            _ => {}
         }
     }
 
@@ -373,11 +446,9 @@ pub fn director_system(
                 .iter()
                 .any(|e| matches!(e, game::Event::DrawGame | game::Event::PlayerWins(_)))
             {
-                eprintln!("TurnEnd -> GameOver");
                 *phase = Phase::GameOver;
                 *turn = None;
             } else {
-                eprintln!("TurnEnd -> SwitchPlayer");
                 *phase = Phase::SwitchPlayer;
             };
         }

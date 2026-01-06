@@ -12,6 +12,7 @@ pub fn render_card(
     canvas: &mut Canvas<Window>,
     entity: Entity,
     ui: &UI,
+    active_entity: Option<Entity>,
     asset_manager: &mut AssetManager,
     components: &Components,
     card_db: &CardDb
@@ -28,6 +29,12 @@ pub fn render_card(
         (Player::P1, Position::Hand(j)) => ui.layout.hand.p1[*j],
         (Player::P2, Position::Hand(j)) => ui.layout.hand.p2[*j],
         (_, Position::Board(x, y)) => ui.layout.board[*y * 3 + *x],
+    };
+
+    let dst = match (active_entity, card_view.owner, card_view.position) {
+        (Some(e), Player::P1, Position::Hand(_)) if e == entity => dst.right_shifted(20), // FIXME magic number
+        (Some(e), Player::P2, Position::Hand(_)) if e == entity => dst.left_shifted(20),
+        _ => dst,
     };
 
     struct CardParts {

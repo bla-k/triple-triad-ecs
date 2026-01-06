@@ -63,8 +63,6 @@ fn main() -> Result<(), String> {
         asset_manager.define_sprite("card-body-light",  t_cards, Rect::new(384,  0, 128, 128));
         asset_manager.define_sprite("card-border-dark", t_cards, Rect::new(512,  0, 128, 128));
         asset_manager.define_sprite("cursor",           t_ui,    Rect::new(  0,  0,   9,  17));
-        asset_manager.define_sprite("stats-back",       t_ui,    Rect::new(  9,  0,  17,  17));
-        asset_manager.define_sprite("stats-border",     t_ui,    Rect::new( 26,  0,  17,  17));
     }
 
     let mut events: VecDeque<game::Event> = VecDeque::new();
@@ -103,6 +101,7 @@ fn main() -> Result<(), String> {
             &mut asset_manager,
             &game.turn,
             &game.cursor,
+            game.active_entity,
             &game.components,
             &card_db,
         )?;
