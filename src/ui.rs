@@ -14,6 +14,7 @@ pub struct Palette {
     pub mono: Theme,
 }
 
+#[derive(Clone, Copy)]
 pub struct Theme {
     pub bg: Color,
     pub fg: Color,
@@ -53,6 +54,11 @@ pub struct Layout {
     pub card: Card,
     pub hand: Hand,
     pub turn_indicator: TurnIndicator,
+}
+
+impl Layout {
+    pub const GRID_SIZE: usize = 3;
+    pub const HOVER_SHIFT: i32 = 20;
 }
 
 impl Default for Layout {

@@ -1,7 +1,3 @@
-//use std::collections::VecDeque;
-//
-//use crate::game;
-
 use crate::{
     data::{CardDb, Stats},
     game::{Components, Entity, Player, Position},
@@ -10,6 +6,7 @@ use crate::{
 // ================================ CardView ===================================
 
 pub struct CardView<'a> {
+    pub id: usize,
     pub entity: Entity,
     pub owner: &'a Player,
     pub position: &'a Position,
@@ -28,6 +25,7 @@ pub fn get_card_view<'a>(
     let card_id = components.card[entity]?;
 
     Some(CardView {
+        id: card_id,
         entity,
         owner,
         position,
@@ -70,4 +68,3 @@ pub fn hand_size(
         })
         .count()
 }
-

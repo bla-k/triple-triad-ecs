@@ -3,10 +3,13 @@ use std::collections::HashMap;
 use sdl2::{
     EventPump,
     image::LoadTexture,
+    pixels::{Color, PixelFormatEnum},
     rect::Rect,
-    render::{Canvas, Texture, TextureCreator},
+    render::{Canvas, Texture, TextureAccess, TextureCreator},
     video::{Window, WindowContext},
 };
+
+use crate::{data::Element, game::Player, ui::Theme};
 
 // =============================== SdlSystems ==================================
 
@@ -56,6 +59,7 @@ impl SdlSystems {
 pub struct AssetManager<'a> {
     font: Font,
     sprites: HashMap<String, Sprite>,
+    pub card_sprites: Vec<[Sprite; 2]>,
     textures: Vec<Texture<'a>>,
 }
 
@@ -71,6 +75,67 @@ impl<'a> AssetManager<'a> {
 
     const GLYPH_FG_A: (i32, i32) = (72, 44);
     const GLYPH_BG_A: (i32, i32) = (72, 88);
+
+    pub const CARD_WIDTH: u32 = 128;
+    pub const CARD_HEIGHT: u32 = 128;
+
+    // card texture does not include stats because modifiers can apply
+    pub fn bake_card_texture(
+        &mut self,
+        canvas: &mut Canvas<Window>,
+        texture_creator: &'a TextureCreator<WindowContext>,
+        player: Player,
+        cfg: BakeCardCfg,
+    ) -> Result<usize, String> {
+        let Theme { bg, fg } = cfg.theme;
+
+        let mut texture = texture_creator
+            .create_texture(
+                PixelFormatEnum::RGBA32,
+                TextureAccess::Target,
+                Self::CARD_WIDTH,
+                Self::CARD_HEIGHT,
+            )
+            .map_err(|e| e.to_string())?;
+
+        #[rustfmt::skip]
+        canvas
+            .with_texture_canvas(&mut texture, |texture_canvas| {
+                texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 0));
+                texture_canvas.clear();
+
+                struct CardParts {
+                    color: Color,
+                    sprite_id_fn: fn(Player) -> &'static str,
+                }
+
+                let card_parts = [
+                    CardParts { color: bg, sprite_id_fn: |_| "card-bg" },
+                    CardParts { color: fg, sprite_id_fn: |_| "card-border" },
+                    CardParts { color: fg, sprite_id_fn: |player| match player {
+                        Player::P1 => "card-body-light",
+                        Player::P2 => "card-border-dark",
+                    }},
+                ];
+
+                for CardParts { color, sprite_id_fn, } in card_parts {
+                    let sprite_id = sprite_id_fn(player);
+                    // FIXME unwraps
+                    let sprite = self.get_sprite(sprite_id).unwrap();
+                    let texture = self.get_texture_mut(sprite.texture_id).unwrap();
+                    texture.set_color_mod(color.r, color.g, color.b);
+                    // FIXME error logging
+                    let _ = texture_canvas.copy(texture, sprite.region, None);
+                    texture.set_color_mod(255, 255, 255);
+                }
+            })
+            .map_err(|e| e.to_string())?;
+
+        let texture_id = self.textures.len();
+        self.textures.push(texture);
+
+        Ok(texture_id)
+    }
 
     pub fn define_sprite(&mut self, name: &str, texture_id: usize, region: Rect) {
         self.sprites
@@ -88,6 +153,10 @@ impl<'a> AssetManager<'a> {
 
     pub fn get_sprite(&self, name: &str) -> Option<Sprite> {
         self.sprites.get(name).copied()
+    }
+
+    pub fn get_texture(&self, texture_id: usize) -> Option<&Texture<'a>> {
+        self.textures.get(texture_id)
     }
 
     pub fn get_texture_mut(&mut self, texture_id: usize) -> Option<&mut Texture<'a>> {
@@ -145,6 +214,12 @@ impl<'a> AssetManager<'a> {
 
         Ok(self.textures.len() - 1)
     }
+}
+
+#[derive(Clone, Copy)]
+pub struct BakeCardCfg {
+    pub theme: Theme,
+    pub element: Element,
 }
 
 #[derive(Clone, Copy)]

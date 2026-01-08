@@ -42,9 +42,10 @@ pub enum Phase {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
 pub enum Player {
-    P1,
-    P2,
+    P1 = 0,
+    P2 = 1,
 }
 
 impl Not for Player {
@@ -141,4 +142,3 @@ impl Default for Components {
         }
     }
 }
-

@@ -32,8 +32,8 @@ use std::collections::VecDeque;
 use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
-    game::{self, Game},
-    sdl::{AssetManager, SdlSystems},
+    game::{self, Game, Player},
+    sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
     systems::{
         director_system, flip_system, input_system, placement_system, render_system, rule_system,
         selection_system, win_system,
@@ -63,6 +63,22 @@ fn main() -> Result<(), String> {
         asset_manager.define_sprite("card-body-light",  t_cards, Rect::new(384,  0, 128, 128));
         asset_manager.define_sprite("card-border-dark", t_cards, Rect::new(512,  0, 128, 128));
         asset_manager.define_sprite("cursor",           t_ui,    Rect::new(  0,  0,   9,  17));
+    }
+
+    #[cfg_attr(any(), rustfmt::skip)]
+    for element in &card_db.elements {
+        let config = BakeCardCfg { theme: ui.palette.mono, element: *element, };
+        let texture_p1 =
+            asset_manager.bake_card_texture(&mut canvas, &texture_creator, Player::P1, config)?;
+        let texture_p2 =
+            asset_manager.bake_card_texture(&mut canvas, &texture_creator, Player::P2, config)?;
+
+        let region = Rect::new(0, 0, AssetManager::CARD_WIDTH, AssetManager::CARD_HEIGHT);
+
+        asset_manager.card_sprites.push([
+            Sprite { region, texture_id: texture_p1, },
+            Sprite { region, texture_id: texture_p2, },
+        ]);
     }
 
     let mut events: VecDeque<game::Event> = VecDeque::new();

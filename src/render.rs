@@ -3,9 +3,13 @@ use crate::{
     game::{Components, Entity, Player, Position},
     query::{CardView, get_card_view},
     sdl::AssetManager,
-    ui::{Theme, UI},
+    ui::{Layout, Theme, UI},
 };
-use sdl2::{pixels::Color, rect::Rect, render::Canvas, video::Window};
+use sdl2::{
+    rect::Rect,
+    render::{Canvas, Texture},
+    video::Window,
+};
 
 #[rustfmt::skip]
 pub fn render_card(
@@ -17,54 +21,25 @@ pub fn render_card(
     components: &Components,
     card_db: &CardDb
 ) -> Result<(), String> {
-    let Theme { bg, fg } = ui.palette.mono;
+    let UI { layout, .. } = ui;
 
     let Some(card_view) = get_card_view(entity, components, card_db) else {
-        eprintln!("ERR: No such entity {}", entity);
-        return Ok(());
+        return Err(format!("No such entity: '{entity}'"));
     };
 
-    // get card's destination region from layout
-    let dst = match (card_view.owner, card_view.position) {
-        (Player::P1, Position::Hand(j)) => ui.layout.hand.p1[*j],
-        (Player::P2, Position::Hand(j)) => ui.layout.hand.p2[*j],
-        (_, Position::Board(x, y)) => ui.layout.board[*y * 3 + *x],
-    };
+    let dst = get_dest_rect(active_entity, &card_view, layout);
+    let (texture, src) = get_texture(&card_view, asset_manager)?;
 
-    let dst = match (active_entity, card_view.owner, card_view.position) {
-        (Some(e), Player::P1, Position::Hand(_)) if e == entity => dst.right_shifted(20), // FIXME magic number
-        (Some(e), Player::P2, Position::Hand(_)) if e == entity => dst.left_shifted(20),
-        _ => dst,
-    };
+    canvas.copy(texture, src, dst)?;
 
-    struct CardParts {
-        color: Color,
-        sprite_id_fn: fn(&CardView) -> &'static str,
-    }
-
-    let card_parts = [
-        CardParts { color: bg, sprite_id_fn: |_| "card-bg" },
-        CardParts { color: fg, sprite_id_fn: |_| "card-border" },
-        CardParts { color: fg, sprite_id_fn: |card_view| match card_view.owner {
-            Player::P1 => "card-body-light",
-            Player::P2 => "card-border-dark",
-        }},
-    ];
-
-    for CardParts { color, sprite_id_fn } in card_parts {
-        let sprite_id = sprite_id_fn(&card_view);
-        let sprite = asset_manager.get_sprite(sprite_id).unwrap();
-        let texture = asset_manager.get_texture_mut(sprite.texture_id).unwrap();
-        texture.set_color_mod(color.r, color.g, color.b);
-        canvas.copy(texture, sprite.region, dst)?;
-        texture.set_color_mod(255, 255, 255);
-    }
-
+    //
+    // >>> TODO render stats <<<
+    //
     let stat_parts = [
-        (card_view.stats.top, ui.layout.card.stats.top),
-        (card_view.stats.lft, ui.layout.card.stats.lft),
-        (card_view.stats.rgt, ui.layout.card.stats.rgt),
-        (card_view.stats.btm, ui.layout.card.stats.btm),
+        (card_view.stats.top, layout.card.stats.top),
+        (card_view.stats.lft, layout.card.stats.lft),
+        (card_view.stats.rgt, layout.card.stats.rgt),
+        (card_view.stats.btm, layout.card.stats.btm),
     ];
 
     let char_mode = match card_view.owner {
@@ -85,6 +60,39 @@ pub fn render_card(
     }
 
     Ok(())
+}
+
+/// Returns card's destination region, extracting it from `Layout`.
+#[rustfmt::skip]
+fn get_dest_rect(active_entity: Option<Entity>, card_view: &CardView, layout: &Layout) -> Rect {
+    let Layout { board, hand, .. } = layout;
+    let &CardView { entity, position, owner, .. } = card_view;
+
+    match (active_entity, position, owner) {
+        (Some(hovered), &Position::Hand(j), Player::P1) if hovered == entity => hand.p1[j].right_shifted(Layout::HOVER_SHIFT),
+        (            _, &Position::Hand(j), Player::P1)                      => hand.p1[j],
+        (Some(hovered), &Position::Hand(j), Player::P2) if hovered == entity => hand.p2[j].left_shifted(Layout::HOVER_SHIFT),
+        (            _, &Position::Hand(j), Player::P2)                      => hand.p2[j],
+        (            _, &Position::Board(x, y),      _)                      => board[y * Layout::GRID_SIZE + x],
+    }
+}
+
+/// Returns card's texture and source region, using the registered `Sprite`.
+fn get_texture<'a>(
+    card_view: &CardView,
+    asset_manager: &'a AssetManager,
+) -> Result<(&'a Texture<'a>, Rect), String> {
+    let sprites = asset_manager
+        .card_sprites
+        .get(card_view.id)
+        .ok_or(format!("No sprite for card id: '{}'", card_view.id))?;
+
+    let sprite = sprites[*card_view.owner as usize];
+    let texture = asset_manager
+        .get_texture(sprite.texture_id)
+        .ok_or(format!("No texture with id: '{}'", sprite.texture_id))?;
+
+    Ok((texture, sprite.region))
 }
 
 fn stat_char(value: u8) -> char {

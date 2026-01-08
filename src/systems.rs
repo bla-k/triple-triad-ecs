@@ -6,7 +6,7 @@ use crate::{
     sdl::AssetManager,
     ui::{Theme, UI},
 };
-use sdl2::{keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window, EventPump};
+use sdl2::{keyboard::Keycode, rect::Rect, render::Canvas, video::Window, EventPump};
 use std::collections::VecDeque;
 
 #[rustfmt::skip]
