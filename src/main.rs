@@ -33,6 +33,7 @@ use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
     game::{self, Game, Player},
+    render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
     systems::{
         director_system, flip_system, input_system, placement_system, render_system, rule_system,
@@ -84,50 +85,47 @@ fn main() -> Result<(), String> {
     let mut events: VecDeque<game::Event> = VecDeque::new();
     let mut game = Game::init();
 
+    let mut render_ctx = RenderCtx {
+        asset_manager: &mut asset_manager,
+        canvas: &mut canvas,
+        ui: &ui,
+    };
+
     'running: loop {
-        input_system(&mut events, &game.phase, &mut event_pump);
-        selection_system(
-            &mut events,
-            &game.phase,
-            &game.turn,
-            &mut game.cursor,
-            &mut game.active_entity,
-            &game.components,
-        );
+        input_system(&mut events, game.state.phase, &mut event_pump);
+        selection_system(&mut events, &mut game.state, &game.components);
         placement_system(
             &mut events,
-            &game.phase,
-            &mut game.cursor,
-            &game.active_entity,
+            &game.state.phase,
+            &mut game.state.cursor,
+            &game.state.active_entity,
             &game.components.owner,
             &mut game.components.position,
         );
         rule_system(
             &mut events,
-            &game.phase,
-            &game.active_entity,
+            &game.state.phase,
+            &game.state.active_entity,
             &game.components,
             &card_db,
         );
         flip_system(&events, &mut game.components.owner);
-        win_system(&mut events, &game.phase, &game.components);
+        win_system(&mut events, &game.state.phase, &game.components);
         render_system(
-            &mut canvas,
-            &ui,
-            &mut asset_manager,
-            &game.turn,
-            &game.cursor,
-            game.active_entity,
+            &mut render_ctx,
+            &game.state.turn,
+            &game.state.cursor,
+            game.state.active_entity,
             &game.components,
             &card_db,
         )?;
 
         let running = director_system(
             &events,
-            &mut game.phase,
-            &mut game.turn,
-            &mut game.cursor,
-            &mut game.active_entity,
+            &mut game.state.phase,
+            &mut game.state.turn,
+            &mut game.state.cursor,
+            &mut game.state.active_entity,
             &game.components.position,
         );
 

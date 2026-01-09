@@ -3,7 +3,29 @@ use std::ops::Not;
 pub type CardId = usize;
 pub type Entity = usize;
 
-pub const GRID_SIZE: usize = 3;
+// ================================== Game =====================================
+
+pub struct Game {
+    pub components: Components,
+    pub state: SessionState,
+}
+
+impl Game {
+    pub fn init() -> Self {
+        Game {
+            components: Components::default(),
+            state: SessionState::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct SessionState {
+    pub active_entity: Option<Entity>,
+    pub cursor: Option<Position>,
+    pub phase: Phase,
+    pub turn: Option<Player>,
+}
 
 #[derive(Debug)]
 pub enum Event {
@@ -29,8 +51,9 @@ pub enum Event {
     DrawGame,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Phase {
+    #[default]
     GameStart,      // randomly determine currently active player
     TurnStart,      // FIXME
     SelectCard,     // player chooses card from hand using cursor
@@ -59,34 +82,12 @@ impl Not for Player {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Position {
     /// (x, y) (0..3, 0..3)
     Board(usize, usize),
     /// index 0..5
     Hand(usize),
-}
-
-pub struct Game {
-    /// eg. Currently selected card, placed card, attacker card, etc.
-    pub active_entity: Option<Entity>,
-    pub cursor: Option<Position>,
-    pub phase: Phase,
-    pub turn: Option<Player>,
-    pub components: Components,
-}
-
-impl Game {
-    pub fn init() -> Self {
-        Game {
-            // resources
-            active_entity: None,
-            cursor: None,
-            phase: Phase::GameStart,
-            turn: None,
-            components: Components::default(),
-        }
-    }
 }
 
 // =============================== Components ==================================

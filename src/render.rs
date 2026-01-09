@@ -11,35 +11,39 @@ use sdl2::{
     video::Window,
 };
 
+pub struct RenderCtx<'a, 'b> {
+    pub asset_manager: &'a mut AssetManager<'b>,
+    pub canvas: &'a mut Canvas<Window>,
+    pub ui: &'a UI,
+}
+
 #[rustfmt::skip]
 pub fn render_card(
-    canvas: &mut Canvas<Window>,
+    ctx: &mut RenderCtx,
     entity: Entity,
-    ui: &UI,
     active_entity: Option<Entity>,
-    asset_manager: &mut AssetManager,
     components: &Components,
     card_db: &CardDb
 ) -> Result<(), String> {
-    let UI { layout, .. } = ui;
+//  let UI { layout, .. } = ui;
 
     let Some(card_view) = get_card_view(entity, components, card_db) else {
         return Err(format!("No such entity: '{entity}'"));
     };
 
-    let dst = get_dest_rect(active_entity, &card_view, layout);
-    let (texture, src) = get_texture(&card_view, asset_manager)?;
+    let dst = get_dest_rect(active_entity, &card_view, &ctx.ui.layout);
+    let (texture, src) = get_texture(&card_view, ctx.asset_manager)?;
 
-    canvas.copy(texture, src, dst)?;
+    ctx.canvas.copy(texture, src, dst)?;
 
     //
     // >>> TODO render stats <<<
     //
     let stat_parts = [
-        (card_view.stats.top, layout.card.stats.top),
-        (card_view.stats.lft, layout.card.stats.lft),
-        (card_view.stats.rgt, layout.card.stats.rgt),
-        (card_view.stats.btm, layout.card.stats.btm),
+        (card_view.stats.top, ctx.ui.layout.card.stats.top),
+        (card_view.stats.lft, ctx.ui.layout.card.stats.lft),
+        (card_view.stats.rgt, ctx.ui.layout.card.stats.rgt),
+        (card_view.stats.btm, ctx.ui.layout.card.stats.btm),
     ];
 
     let char_mode = match card_view.owner {
@@ -56,7 +60,7 @@ pub fn render_card(
             AssetManager::GLYPH_WIDTH as u32,
             AssetManager::GLYPH_HEIGHT as u32
         );
-        render_char(value, char_mode, dst, canvas, ui, asset_manager)?;
+        render_char(value, char_mode, dst, ctx)?;
     }
 
     Ok(())
@@ -116,11 +120,9 @@ pub fn render_char(
     c: char,
     mode: CharMode,
     dst: Rect,
-    canvas: &mut Canvas<Window>,
-    ui: &UI,
-    asset_manager: &mut AssetManager,
+    ctx: &mut RenderCtx,
 ) -> Result<(), String> {
-    let Some((font, texture)) = asset_manager.get_font() else {
+    let Some((font, texture)) = ctx.asset_manager.get_font() else {
         eprintln!("ERR: font not loaded");
         return Ok(());
     };
@@ -129,31 +131,31 @@ pub fn render_char(
         return Ok(());
     };
 
-    let Theme { bg, fg } = ui.palette.mono;
+    let Theme { bg, fg } = ctx.ui.palette.mono;
 
     match mode {
         CharMode::RegularLight => {
             texture.set_color_mod(fg.r, fg.g, fg.b);
-            canvas.copy(texture, glyph.0, dst)?;
+            ctx.canvas.copy(texture, glyph.0, dst)?;
             texture.set_color_mod(255, 255, 255);
         }
         CharMode::RegularDark => {
             texture.set_color_mod(bg.r, bg.g, bg.b);
-            canvas.copy(texture, glyph.0, dst)?;
+            ctx.canvas.copy(texture, glyph.0, dst)?;
             texture.set_color_mod(255, 255, 255);
         }
         CharMode::BoldLight => {
             texture.set_color_mod(bg.r, bg.g, bg.b);
-            canvas.copy(texture, glyph.1, dst)?;
+            ctx.canvas.copy(texture, glyph.1, dst)?;
             texture.set_color_mod(fg.r, fg.g, fg.b);
-            canvas.copy(texture, glyph.0, dst)?;
+            ctx.canvas.copy(texture, glyph.0, dst)?;
             texture.set_color_mod(255, 255, 255);
         }
         CharMode::BoldDark => {
             texture.set_color_mod(fg.r, fg.g, fg.b);
-            canvas.copy(texture, glyph.1, dst)?;
+            ctx.canvas.copy(texture, glyph.1, dst)?;
             texture.set_color_mod(bg.r, bg.g, bg.b);
-            canvas.copy(texture, glyph.0, dst)?;
+            ctx.canvas.copy(texture, glyph.0, dst)?;
             texture.set_color_mod(255, 255, 255);
         }
     }
