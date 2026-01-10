@@ -151,6 +151,13 @@ impl<'a> AssetManager<'a> {
         Some((&self.font, texture))
     }
 
+    pub fn get_sprexture(&mut self, name: &str) -> Option<(Sprite, &mut Texture<'a>)> {
+        let sprite = self.get_sprite(name)?;
+        let texture = self.get_texture_mut(sprite.texture_id)?;
+
+        Some((sprite, texture))
+    }
+
     pub fn get_sprite(&self, name: &str) -> Option<Sprite> {
         self.sprites.get(name).copied()
     }

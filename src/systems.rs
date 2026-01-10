@@ -2,7 +2,7 @@ use crate::{
     data::{CardDb, Stats},
     game::{self, Components, Entity, Phase, Player, Position, SessionState},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
-    render::{RenderCtx, render_card},
+    render::{RenderCtx, render_board, render_card},
     ui::{Layout, Theme},
 };
 use sdl2::{EventPump, keyboard::Keycode, rect::Rect};
@@ -275,19 +275,7 @@ pub fn render_system(
     ctx.canvas.set_draw_color(bg);
     ctx.canvas.clear();
 
-    // render board
-    {
-        let s_cell = ctx.asset_manager.get_sprite("cell").unwrap();
-        let t_cell = ctx
-            .asset_manager
-            .get_texture_mut(s_cell.texture_id)
-            .unwrap();
-        t_cell.set_color_mod(fg.r, fg.g, fg.b);
-        for rect in ctx.ui.layout.board {
-            ctx.canvas.copy(t_cell, s_cell.region, rect)?;
-        }
-        t_cell.set_color_mod(255, 255, 255);
-    }
+    render_board(ctx)?;
 
     // render cards
     for entity in 0..10 {

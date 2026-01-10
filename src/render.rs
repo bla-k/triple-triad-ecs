@@ -11,11 +11,36 @@ use sdl2::{
     video::Window,
 };
 
+// ============================= Render Context ================================
+
 pub struct RenderCtx<'a, 'b> {
     pub asset_manager: &'a mut AssetManager<'b>,
     pub canvas: &'a mut Canvas<Window>,
     pub ui: &'a UI,
 }
+
+// ============================ Render Functions ===============================
+
+pub fn render_board(ctx: &mut RenderCtx) -> Result<(), String> {
+    let (sprite, texture) = ctx
+        .asset_manager
+        .get_sprexture("cell")
+        .ok_or("ERR: Missing asset")?;
+
+    let Theme { fg, .. } = ctx.ui.palette.mono;
+    texture.set_color_mod(fg.r, fg.g, fg.b);
+
+    for rect in ctx.ui.layout.board {
+        ctx.canvas.copy(texture, sprite.region, rect)?;
+    }
+
+    texture.set_color_mod(255, 255, 255);
+
+    Ok(())
+}
+
+
+// vvv TODO vvv
 
 #[rustfmt::skip]
 pub fn render_card(
@@ -116,12 +141,7 @@ pub enum CharMode {
     BoldDark,
 }
 
-pub fn render_char(
-    c: char,
-    mode: CharMode,
-    dst: Rect,
-    ctx: &mut RenderCtx,
-) -> Result<(), String> {
+pub fn render_char(c: char, mode: CharMode, dst: Rect, ctx: &mut RenderCtx) -> Result<(), String> {
     let Some((font, texture)) = ctx.asset_manager.get_font() else {
         eprintln!("ERR: font not loaded");
         return Ok(());
