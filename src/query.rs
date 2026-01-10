@@ -38,14 +38,13 @@ pub fn get_card_view<'a>(
 /// This is useful when you have to match a card that is in player's hand, because `Position` alone
 /// may collide and return opponent's entity.
 pub fn get_owned_entity(
-    player: &Player,
-    position: &Position,
+    player: Player,
+    position: Position,
     owners: &[Option<Player>],
     positions: &[Option<Position>],
 ) -> Option<Entity> {
-    (0..owners.len()).find(|&entity| {
-        owners[entity].as_ref() == Some(player) && positions[entity].as_ref() == Some(position)
-    })
+    (0..owners.len())
+        .find(|&entity| owners[entity] == Some(player) && positions[entity] == Some(position))
 }
 
 /// Returns the entity corresponding to the query `Position`.
@@ -56,15 +55,17 @@ pub fn get_placed_entity(position: &Position, positions: &[Option<Position>]) ->
     (0..positions.len()).find(|&entity| positions[entity].as_ref() == Some(position))
 }
 
+/// Returns current player's hand size.
 pub fn hand_size(
-    player: &Player,
+    player: Player,
     owners: &[Option<Player>],
     positions: &[Option<Position>],
 ) -> usize {
-    (0..owners.len())
-        .filter(|&entity| {
-            owners[entity].as_ref() == Some(player)
-                && matches!(positions[entity], Some(Position::Hand(_)))
+    owners
+        .iter()
+        .zip(positions.iter())
+        .filter(|&(&owner, &position)| {
+            owner == Some(player) && matches!(position, Some(Position::Hand(_)))
         })
         .count()
 }

@@ -94,40 +94,13 @@ fn main() -> Result<(), String> {
     'running: loop {
         input_system(&mut events, game.state.phase, &mut event_pump);
         selection_system(&mut events, &mut game.state, &game.components);
-        placement_system(
-            &mut events,
-            &game.state.phase,
-            &mut game.state.cursor,
-            &game.state.active_entity,
-            &game.components.owner,
-            &mut game.components.position,
-        );
-        rule_system(
-            &mut events,
-            &game.state.phase,
-            &game.state.active_entity,
-            &game.components,
-            &card_db,
-        );
+        placement_system(&mut events, &mut game.state, &mut game.components);
+        rule_system(&mut events, &game.state, &game.components, &card_db);
         flip_system(&events, &mut game.components.owner);
         win_system(&mut events, &game.state.phase, &game.components);
-        render_system(
-            &mut render_ctx,
-            &game.state.turn,
-            &game.state.cursor,
-            game.state.active_entity,
-            &game.components,
-            &card_db,
-        )?;
+        render_system(&mut render_ctx, &game.state, &game.components, &card_db)?;
 
-        let running = director_system(
-            &events,
-            &mut game.state.phase,
-            &mut game.state.turn,
-            &mut game.state.cursor,
-            &mut game.state.active_entity,
-            &game.components.position,
-        );
+        let running = director_system(&events, &mut game.state, &game.components.position);
 
         events.clear();
 
