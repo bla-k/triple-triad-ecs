@@ -1,7 +1,15 @@
 use std::ops::Not;
 
 pub type CardId = usize;
-pub type Entity = usize;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Entity(pub(crate) usize);
+
+impl Entity {
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
 
 // ================================== Game =====================================
 
@@ -54,7 +62,7 @@ pub enum Event {
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Phase {
     #[default]
-    GameStart,      // randomly determine currently active player
+    GameStart, // randomly determine currently active player
     TurnStart,      // FIXME
     SelectCard,     // player chooses card from hand using cursor
     PlaceCard,      // player chooses destination board cell using cursor

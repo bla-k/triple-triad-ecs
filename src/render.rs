@@ -39,7 +39,6 @@ pub fn render_board(ctx: &mut RenderCtx) -> Result<(), String> {
     Ok(())
 }
 
-
 // vvv TODO vvv
 
 #[rustfmt::skip]
@@ -53,7 +52,7 @@ pub fn render_card(
 //  let UI { layout, .. } = ui;
 
     let Some(card_view) = get_card_view(entity, components, card_db) else {
-        return Err(format!("No such entity: '{entity}'"));
+        return Err(format!("No such entity: '{entity:?}'"));
     };
 
     let dst = get_dest_rect(active_entity, &card_view, &ctx.ui.layout);

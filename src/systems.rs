@@ -104,7 +104,7 @@ pub fn placement_system(
             (game::Event::PlaceCard, Some(Position::Board(x, y))) => {
                 let position = Position::Board(*x, *y);
                 // the destination cell is not occupied
-                if get_placed_entity(&position, &components.position).is_none() {
+                if get_placed_entity(position, &components.position).is_none() {
                     place_dst = Some(position);
                 }
             }
@@ -118,12 +118,13 @@ pub fn placement_system(
     // shift hand that has position > saved
     // fire event placed
     if let Some(position) = place_dst {
-        let Some(Position::Hand(selected_hand_idx)) = components.position[selected_entity] else {
+        let Some(Position::Hand(selected_hand_idx)) = components.position[selected_entity.id()]
+        else {
             return;
         };
 
-        components.position[selected_entity] = Some(position);
-        let player = &components.owner[selected_entity];
+        components.position[selected_entity.id()] = Some(position);
+        let player = &components.owner[selected_entity.id()];
 
         for entity in 0..components.owner.len() {
             if &components.owner[entity] != player {
@@ -203,7 +204,7 @@ pub fn rule_system(
 
     for check in checks {
         if check.in_bounds {
-            let Some(neighbor_entity) = get_placed_entity(&check.pos, &components.position) else {
+            let Some(neighbor_entity) = get_placed_entity(check.pos, &components.position) else {
                 continue;
             };
             let Some(neighbor_card) = get_card_view(neighbor_entity, components, card_db) else {
@@ -222,7 +223,7 @@ pub fn rule_system(
 pub fn flip_system(events: &VecDeque<game::Event>, owners: &mut [Option<Player>]) {
     for event in events {
         if let game::Event::RuleFlip(entity) = event
-            && let Some(player) = owners[*entity].as_mut()
+            && let Some(player) = owners[entity.id()].as_mut()
         {
             *player = !*player;
         }
@@ -278,8 +279,8 @@ pub fn render_system(
     render_board(ctx)?;
 
     // render cards
-    for entity in 0..10 {
-        render_card(ctx, entity, state.active_entity, components, card_db)?;
+    for j in 0..10 {
+        render_card(ctx, Entity(j), state.active_entity, components, card_db)?;
     }
 
     // render cursor
@@ -398,7 +399,7 @@ pub fn director_system(
                 let hand_index = state
                     .active_entity
                     .take()
-                    .and_then(|entity| position[entity].as_ref())
+                    .and_then(|entity| position[entity.id()].as_ref())
                     .map_or(0, |pos| match pos {
                         Position::Hand(j) => *j,
                         _ => 0,

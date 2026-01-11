@@ -20,9 +20,9 @@ pub fn get_card_view<'a>(
     components: &'a Components,
     card_db: &'a CardDb,
 ) -> Option<CardView<'a>> {
-    let owner = components.owner[entity].as_ref()?;
-    let position = components.position[entity].as_ref()?;
-    let card_id = components.card[entity]?;
+    let owner = components.owner[entity.id()].as_ref()?;
+    let position = components.position[entity.id()].as_ref()?;
+    let card_id = components.card[entity.id()]?;
 
     Some(CardView {
         id: card_id,
@@ -43,16 +43,31 @@ pub fn get_owned_entity(
     owners: &[Option<Player>],
     positions: &[Option<Position>],
 ) -> Option<Entity> {
-    (0..owners.len())
-        .find(|&entity| owners[entity] == Some(player) && positions[entity] == Some(position))
+    owners
+        .iter()
+        .zip(positions.iter())
+        .enumerate()
+        .find_map(|(j, (&owner, &pos))| {
+            if owner == Some(player) && pos == Some(position) {
+                Some(Entity(j))
+            } else {
+                None
+            }
+        })
 }
 
 /// Returns the entity corresponding to the query `Position`.
 ///
 /// This is useful when you have to match a card that is placed on the board, but you don't care
 /// about card's ownership.
-pub fn get_placed_entity(position: &Position, positions: &[Option<Position>]) -> Option<Entity> {
-    (0..positions.len()).find(|&entity| positions[entity].as_ref() == Some(position))
+pub fn get_placed_entity(position: Position, positions: &[Option<Position>]) -> Option<Entity> {
+    positions.iter().enumerate().find_map(|(j, &pos)| {
+        if pos == Some(position) {
+            Some(Entity(j))
+        } else {
+            None
+        }
+    })
 }
 
 /// Returns current player's hand size.
