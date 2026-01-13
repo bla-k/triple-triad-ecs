@@ -76,21 +76,21 @@ fn main() -> Result<(), String> {
         selection_system(
             &command_queue,
             &mut event_queue,
-            &mut game.state,
+            &mut game.mstate,
             &game.components,
         );
         placement_system(
             &command_queue,
             &mut event_queue,
-            &mut game.state,
+            &mut game.mstate,
             &mut game.components,
         );
-        rule_system(&mut flip_queue, &game.state, &game.components, &card_db);
+        rule_system(&mut flip_queue, &game.mstate, &game.components, &card_db);
         flip_system(&mut event_queue, &flip_queue, &mut game.components.owner);
-        win_system(&mut event_queue, &game.state.phase, &game.components);
-        render_system(&mut render_ctx, &game.state, &game.components, &card_db)?;
+        win_system(&mut event_queue, game.mstate, &game.components);
+        render_system(&mut render_ctx, &game.mstate, &game.components, &card_db)?;
 
-        director_system(&event_queue, &mut game.state, &game.components.position);
+        director_system(&event_queue, &mut game.mstate, &game.components.position);
 
         command_queue.clear();
         event_queue.clear();

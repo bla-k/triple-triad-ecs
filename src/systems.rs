@@ -1,9 +1,10 @@
 use crate::{
     data::{CardDb, Stats},
     event::{Command, Direction, GameEvent, MatchResult},
-    game::{Components, Entity, Phase, Player, Position, SessionState},
+    game::{Components, Entity, MatchState, Player, Position, TurnPhase},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
     render::{RenderCtx, render_board, render_card},
+    rules::{wrap_decr, wrap_incr},
     ui::{Layout, Theme},
 };
 use sdl2::{EventPump, keyboard::Keycode, rect::Rect};
@@ -56,14 +57,14 @@ pub fn input_system(commands: &mut VecDeque<Command>, event_pump: &mut EventPump
 pub fn selection_system(
     commands: &VecDeque<Command>,
     game_events: &mut VecDeque<GameEvent>,
-    state: &mut SessionState,
+    state: &mut MatchState,
     components: &Components,
 ) {
-    if !matches!(state.phase, Phase::SelectCard) {
-        return;
-    }
-
-    let Some(player) = state.turn else {
+    let MatchState::Turn {
+        phase: TurnPhase::SelectCard { cursor, entity },
+        player,
+    } = state
+    else {
         return;
     };
 
@@ -71,70 +72,59 @@ pub fn selection_system(
         owner, position, ..
     } = components;
 
-    let maxlen = hand_size(player, owner, position);
+    let maxlen = hand_size(*player, owner, position);
 
     let mut card_selected = false;
     for command in commands {
-        match (command, state.cursor.as_mut()) {
-            (Command::MoveCursor(Direction::Down), Some(Position::Hand(j))) => {
-                *j = (*j + 1) % maxlen
-            }
-
-            (Command::MoveCursor(Direction::Up), Some(Position::Hand(j))) => {
-                *j = (*j as isize - 1).rem_euclid(maxlen as isize) as usize
-            }
-
-            (Command::Confirm, Some(Position::Hand(_))) => card_selected = true,
-
+        match command {
+            Command::MoveCursor(Direction::Down) => *cursor = wrap_incr(*cursor, maxlen),
+            Command::MoveCursor(Direction::Up) => *cursor = wrap_decr(*cursor, maxlen),
+            Command::Confirm => card_selected = true,
             _ => {}
         }
     }
 
     // always update selection by reading current cursor, so on player's turn start the preset
     // `Hand(0)` card appears selected
-    if let Some(Position::Hand(j)) = state.cursor {
-        state.active_entity = get_owned_entity(player, Position::Hand(j), owner, position);
-    }
+    *entity = get_owned_entity(*player, Position::Hand(*cursor), owner, position);
 
-    if state.active_entity.is_some() && card_selected {
-        game_events.push_back(GameEvent::CardSelected);
+    if let Some(target) = entity
+        && card_selected
+    {
+        game_events.push_back(GameEvent::CardSelected { target: *target });
     }
 }
 
 pub fn placement_system(
     commands: &VecDeque<Command>,
     game_events: &mut VecDeque<GameEvent>,
-    state: &mut SessionState,
+    mstate: &mut MatchState,
     components: &mut Components,
 ) {
-    if !matches!(state.phase, Phase::PlaceCard) {
-        return;
-    }
-
-    let Some(selected_entity) = state.active_entity else {
+    let MatchState::Turn {
+        phase: TurnPhase::PlaceCard { cursor, entity },
+        ..
+    } = mstate
+    else {
         return;
     };
 
     let mut place_dst: Option<Position> = None;
     for command in commands.iter() {
-        match (command, state.cursor.as_mut()) {
-            (Command::MoveCursor(Direction::Down), Some(Position::Board(_, y))) => {
-                *y = (*y + 1) % Layout::GRID_SIZE
+        match command {
+            Command::MoveCursor(Direction::Down) => {
+                cursor.1 = wrap_incr(cursor.1, Layout::GRID_SIZE)
             }
-            (Command::MoveCursor(Direction::Left), Some(Position::Board(x, _))) => {
-                *x = (*x as isize - 1).rem_euclid(Layout::GRID_SIZE as isize) as usize
+            Command::MoveCursor(Direction::Left) => {
+                cursor.0 = wrap_decr(cursor.0, Layout::GRID_SIZE)
             }
-            (Command::MoveCursor(Direction::Right), Some(Position::Board(x, _))) => {
-                *x = (*x + 1) % Layout::GRID_SIZE
+            Command::MoveCursor(Direction::Right) => {
+                cursor.0 = wrap_incr(cursor.0, Layout::GRID_SIZE)
             }
-            (Command::MoveCursor(Direction::Up), Some(Position::Board(_, y))) => {
-                *y = (*y as isize - 1).rem_euclid(Layout::GRID_SIZE as isize) as usize
-            }
-            (Command::Cancel, Some(Position::Board(_, _))) => {
-                game_events.push_back(GameEvent::CardDeselected)
-            }
-            (Command::Confirm, Some(Position::Board(x, y))) => {
-                let position = Position::Board(*x, *y);
+            Command::MoveCursor(Direction::Up) => cursor.1 = wrap_decr(cursor.1, Layout::GRID_SIZE),
+            Command::Cancel => game_events.push_back(GameEvent::CardDeselected),
+            Command::Confirm => {
+                let position = Position::Board(cursor.0, cursor.1);
                 // the destination cell is not occupied
                 if get_placed_entity(position, &components.position).is_none() {
                     place_dst = Some(position);
@@ -150,20 +140,19 @@ pub fn placement_system(
     // shift hand that has position > saved
     // fire event placed
     if let Some(position) = place_dst {
-        let Some(Position::Hand(selected_hand_idx)) = components.position[selected_entity.id()]
-        else {
+        let Some(Position::Hand(selected_hand_idx)) = components.position[entity.id()] else {
             return;
         };
 
-        components.position[selected_entity.id()] = Some(position);
-        let player = &components.owner[selected_entity.id()];
+        components.position[entity.id()] = Some(position);
+        let player = &components.owner[entity.id()];
 
-        for entity in 0..components.owner.len() {
-            if &components.owner[entity] != player {
+        for e in 0..components.owner.len() {
+            if &components.owner[e] != player {
                 continue;
             }
 
-            let Some(Position::Hand(k)) = components.position[entity].as_mut() else {
+            let Some(Position::Hand(k)) = components.position[e].as_mut() else {
                 continue;
             };
 
@@ -178,19 +167,19 @@ pub fn placement_system(
 
 pub fn rule_system(
     game_events: &mut VecDeque<Entity>,
-    state: &SessionState,
+    mstate: &MatchState,
     components: &Components,
     card_db: &CardDb,
 ) {
-    if !matches!(state.phase, Phase::CheckNeighbors) {
-        return;
-    }
-
-    let Some(placed_entity) = state.active_entity else {
+    let MatchState::Turn {
+        phase: TurnPhase::ResolveRules { entity },
+        ..
+    } = mstate
+    else {
         return;
     };
 
-    let Some(placed_card) = get_card_view(placed_entity, components, card_db) else {
+    let Some(placed_card) = get_card_view(*entity, components, card_db) else {
         return;
     };
 
@@ -265,10 +254,18 @@ pub fn flip_system(
     }
 }
 
-pub fn win_system(events_out: &mut VecDeque<GameEvent>, phase: &Phase, components: &Components) {
-    if !matches!(phase, Phase::TurnEnd) {
+pub fn win_system(
+    events_out: &mut VecDeque<GameEvent>,
+    mstate: MatchState,
+    components: &Components,
+) {
+    let MatchState::Turn {
+        phase: TurnPhase::End,
+        ..
+    } = mstate
+    else {
         return;
-    }
+    };
 
     let placed_count = components
         .position
@@ -302,7 +299,7 @@ pub fn win_system(events_out: &mut VecDeque<GameEvent>, phase: &Phase, component
 
 pub fn render_system(
     ctx: &mut RenderCtx,
-    state: &SessionState,
+    mstate: &MatchState,
     components: &Components,
     card_db: &CardDb,
 ) -> Result<(), String> {
@@ -314,79 +311,102 @@ pub fn render_system(
     render_board(ctx)?;
 
     // render cards
+    let active_entity = match mstate {
+        MatchState::Turn {
+            phase: TurnPhase::SelectCard { entity, .. },
+            ..
+        } => entity,
+
+        MatchState::Turn {
+            phase: TurnPhase::PlaceCard { entity, .. },
+            ..
+        } => &Some(*entity),
+
+        MatchState::Turn {
+            phase: TurnPhase::ResolveRules { entity, .. },
+            ..
+        } => &Some(*entity),
+
+        _ => &None,
+    };
     for j in 0..10 {
-        render_card(ctx, Entity(j), state.active_entity, components, card_db)?;
+        render_card(ctx, Entity(j), *active_entity, components, card_db)?;
     }
 
     // render cursor
-    if let Some(cursor) = state.cursor {
-        match (state.turn, cursor) {
-            // cursor to the right of the card
-            (Some(Player::P1), Position::Hand(j)) => {
-                let s_cursor = ctx.asset_manager.get_sprite("cursor").unwrap();
-                let t_cursor = ctx
-                    .asset_manager
-                    .get_texture_mut(s_cursor.texture_id)
-                    .unwrap();
-                t_cursor.set_color_mod(fg.r, fg.g, fg.b);
+    match mstate {
+        MatchState::Turn {
+            phase: TurnPhase::SelectCard { cursor, .. },
+            player: Player::P1,
+        } => {
+            let s_cursor = ctx.asset_manager.get_sprite("cursor").unwrap();
+            let t_cursor = ctx
+                .asset_manager
+                .get_texture_mut(s_cursor.texture_id)
+                .unwrap();
+            t_cursor.set_color_mod(fg.r, fg.g, fg.b);
 
-                let card_rect = ctx.ui.layout.hand.p1[j];
-                let cursor_rect = Rect::new(
-                    card_rect.x() + card_rect.width() as i32 + 24,
-                    card_rect.y() + (card_rect.height() / 2) as i32
-                        - (s_cursor.region.height() / 2) as i32,
-                    s_cursor.region.width(),
-                    s_cursor.region.height(),
-                );
+            let card_rect = ctx.ui.layout.hand.p1[*cursor];
+            let cursor_rect = Rect::new(
+                card_rect.x() + card_rect.width() as i32 + 24,
+                card_rect.y() + (card_rect.height() / 2) as i32
+                    - (s_cursor.region.height() / 2) as i32,
+                s_cursor.region.width(),
+                s_cursor.region.height(),
+            );
 
-                ctx.canvas.copy(t_cursor, s_cursor.region, cursor_rect)?;
+            ctx.canvas.copy(t_cursor, s_cursor.region, cursor_rect)?;
 
-                t_cursor.set_color_mod(255, 255, 255);
-            }
-
-            // flipped cursor to the left of the card
-            (Some(Player::P2), Position::Hand(j)) => {
-                let s_cursor = ctx.asset_manager.get_sprite("cursor").unwrap();
-                let t_cursor = ctx
-                    .asset_manager
-                    .get_texture_mut(s_cursor.texture_id)
-                    .unwrap();
-                t_cursor.set_color_mod(fg.r, fg.g, fg.b);
-
-                let card_rect = ctx.ui.layout.hand.p2[j];
-                let cursor_rect = Rect::new(
-                    card_rect.x() - 34,
-                    card_rect.y() + (card_rect.height() / 2) as i32
-                        - (s_cursor.region.height() / 2) as i32,
-                    s_cursor.region.width(),
-                    s_cursor.region.height(),
-                );
-
-                ctx.canvas.copy_ex(
-                    t_cursor,
-                    s_cursor.region,
-                    cursor_rect,
-                    0.0,
-                    None,
-                    true,
-                    false,
-                )?;
-
-                t_cursor.set_color_mod(255, 255, 255);
-            }
-
-            // cursor highlighting the center of the cell
-            (_, Position::Board(x, y)) => {
-                let j = y * 3 + x; // FIXME magic number
-                let card_rect = ctx.ui.layout.board[j];
-                let mut cursor = card_rect.left_shifted(8).top_shifted(8);
-                cursor.resize(card_rect.width() + 16, card_rect.height() + 16);
-
-                ctx.canvas.set_draw_color(fg);
-                ctx.canvas.draw_rect(cursor)?;
-            }
-            _ => {}
+            t_cursor.set_color_mod(255, 255, 255);
         }
+
+        MatchState::Turn {
+            phase: TurnPhase::SelectCard { cursor, .. },
+            player: Player::P2,
+        } => {
+            let s_cursor = ctx.asset_manager.get_sprite("cursor").unwrap();
+            let t_cursor = ctx
+                .asset_manager
+                .get_texture_mut(s_cursor.texture_id)
+                .unwrap();
+            t_cursor.set_color_mod(fg.r, fg.g, fg.b);
+
+            let card_rect = ctx.ui.layout.hand.p2[*cursor];
+            let cursor_rect = Rect::new(
+                card_rect.x() - 34,
+                card_rect.y() + (card_rect.height() / 2) as i32
+                    - (s_cursor.region.height() / 2) as i32,
+                s_cursor.region.width(),
+                s_cursor.region.height(),
+            );
+
+            ctx.canvas.copy_ex(
+                t_cursor,
+                s_cursor.region,
+                cursor_rect,
+                0.0,
+                None,
+                true,
+                false,
+            )?;
+
+            t_cursor.set_color_mod(255, 255, 255);
+        }
+
+        MatchState::Turn {
+            phase: TurnPhase::PlaceCard { cursor, .. },
+            ..
+        } => {
+            let j = cursor.1 * 3 + cursor.0; // FIXME magic number
+            let card_rect = ctx.ui.layout.board[j];
+            let mut cursor = card_rect.left_shifted(8).top_shifted(8);
+            cursor.resize(card_rect.width() + 16, card_rect.height() + 16);
+
+            ctx.canvas.set_draw_color(fg);
+            ctx.canvas.draw_rect(cursor)?;
+        }
+
+        _ => {}
     }
 
     ctx.canvas.present();
@@ -397,76 +417,102 @@ pub fn render_system(
 /// Returns whether the game is running or not.
 pub fn director_system(
     events: &VecDeque<GameEvent>,
-    state: &mut SessionState,
+    mstate: &mut MatchState,
     position: &[Option<Position>],
 ) {
-    match state.phase {
-        Phase::GameStart => {
-            state.phase = Phase::TurnStart;
-            state.turn = Some(Player::P1);
-        }
+    *mstate = match mstate {
+        MatchState::GameStart => MatchState::Turn {
+            phase: TurnPhase::Start,
+            player: Player::P1,
+        },
 
-        Phase::TurnStart => {
-            state.phase = Phase::SelectCard;
-            state.cursor = Some(Position::Hand(0));
-        }
+        MatchState::Turn {
+            phase: TurnPhase::Start,
+            player,
+        } => MatchState::Turn {
+            phase: TurnPhase::SelectCard {
+                cursor: 0,
+                entity: None,
+            },
+            player: *player,
+        },
 
-        Phase::SelectCard => {
-            if events.iter().any(|e| matches!(e, GameEvent::CardSelected)) {
-                state.phase = Phase::PlaceCard;
-                state.cursor = Some(Position::Board(1, 1));
+        MatchState::Turn {
+            phase: TurnPhase::SelectCard { .. },
+            player,
+        } => {
+            if let Some(GameEvent::CardSelected { target }) = events
+                .iter()
+                .find(|e| matches!(e, GameEvent::CardSelected { .. }))
+            {
+                MatchState::Turn {
+                    phase: TurnPhase::PlaceCard {
+                        cursor: (1, 1),
+                        entity: *target,
+                    },
+                    player: *player,
+                }
+            } else {
+                *mstate
             }
         }
 
-        Phase::PlaceCard => {
-            #[cfg_attr(any(), rustfmt::skip)]
-            let deselected = events.iter().any(|e| matches!(e, GameEvent::CardDeselected));
+        MatchState::Turn {
+            phase: TurnPhase::PlaceCard { entity, .. },
+            player,
+        } => {
+            let deselected = events
+                .iter()
+                .any(|e| matches!(e, GameEvent::CardDeselected));
             let placed = events.iter().any(|e| matches!(e, GameEvent::CardPlaced));
 
             if deselected {
-                let hand_index = state
-                    .active_entity
-                    .take()
-                    .and_then(|entity| position[entity.id()].as_ref())
-                    .map_or(0, |pos| match pos {
-                        Position::Hand(j) => *j,
-                        _ => 0,
-                    });
+                let cursor = position[entity.id()].map_or(0, |pos| match pos {
+                    Position::Hand(j) => j,
+                    _ => 0,
+                });
 
-                state.phase = Phase::SelectCard;
-                state.cursor = Some(Position::Hand(hand_index));
+                MatchState::Turn {
+                    phase: TurnPhase::SelectCard {
+                        cursor,
+                        entity: None,
+                    },
+                    player: *player,
+                }
             } else if placed {
-                state.phase = Phase::CheckNeighbors;
-                state.cursor = None;
-            }
-        }
-
-        Phase::CheckNeighbors => state.phase = Phase::TurnEnd,
-
-        Phase::TurnEnd => {
-            state.active_entity = None;
-
-            if events.iter().any(|e| {
-                matches!(
-                    e,
-                    GameEvent::MatchEnded(MatchResult::Draw)
-                        | GameEvent::MatchEnded(MatchResult::Winner(_))
-                )
-            }) {
-                state.phase = Phase::GameOver;
-                state.turn = None;
+                MatchState::Turn {
+                    phase: TurnPhase::ResolveRules { entity: *entity },
+                    player: *player,
+                }
             } else {
-                state.phase = Phase::SwitchPlayer;
-            };
-        }
-
-        Phase::SwitchPlayer => {
-            if let Some(player) = state.turn.as_mut() {
-                *player = !*player;
-                state.phase = Phase::TurnStart;
+                *mstate
             }
         }
 
-        Phase::GameOver => {}
-    }
+        MatchState::Turn {
+            phase: TurnPhase::ResolveRules { .. },
+            player,
+        } => MatchState::Turn {
+            phase: TurnPhase::End,
+            player: *player,
+        },
+
+        MatchState::Turn {
+            phase: TurnPhase::End,
+            player,
+        } => {
+            let match_ended = events.iter().any(|e| matches!(e, GameEvent::MatchEnded(_)));
+
+            if match_ended {
+                MatchState::GameOver
+            } else {
+                MatchState::Turn {
+                    phase: TurnPhase::Start,
+                    player: !*player,
+                }
+            }
+        }
+
+        MatchState::GameOver => *mstate,
+    };
 }

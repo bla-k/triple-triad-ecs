@@ -20,7 +20,7 @@ pub enum Direction {
 
 #[derive(Debug)]
 pub enum GameEvent {
-    CardSelected,
+    CardSelected { target: Entity },
     CardDeselected,
     CardPlaced,
     CaptureDetected { target: Entity },
