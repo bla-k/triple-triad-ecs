@@ -177,7 +177,7 @@ pub fn placement_system(
 }
 
 pub fn rule_system(
-    game_events: &mut VecDeque<GameEvent>,
+    game_events: &mut VecDeque<Entity>,
     state: &SessionState,
     components: &Components,
     card_db: &CardDb,
@@ -246,9 +246,7 @@ pub fn rule_system(
                 continue;
             }
             if check.atk_stat > (check.def_stat_fn)(neighbor_card.stats) {
-                game_events.push_back(GameEvent::CaptureDetected {
-                    target: neighbor_entity,
-                });
+                game_events.push_back(neighbor_entity);
             }
         }
     }
@@ -256,13 +254,11 @@ pub fn rule_system(
 
 pub fn flip_system(
     events_out: &mut VecDeque<GameEvent>,
-    events_in: &VecDeque<GameEvent>,
+    events_in: &VecDeque<Entity>,
     owners: &mut [Option<Player>],
 ) {
-    for event in events_in {
-        if let GameEvent::CaptureDetected { target } = event
-            && let Some(player) = owners[target.id()].as_mut()
-        {
+    for entity in events_in {
+        if let Some(player) = owners[entity.id()].as_mut() {
             *player = !*player;
             events_out.push_back(GameEvent::CardFlipped);
         }

@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::game::{Entity, Player};
 
 #[derive(Debug)]
@@ -31,3 +33,11 @@ pub enum MatchResult {
     Draw,
     Winner(Player),
 }
+
+#[derive(Debug, Default)]
+pub struct Bus {
+    pub command_queue: VecDeque<Command>,
+    pub event_queue: VecDeque<GameEvent>,
+    pub flip_queue: VecDeque<Entity>,
+}
+

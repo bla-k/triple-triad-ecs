@@ -27,12 +27,11 @@
 // quadtree/spatial hash which implies snapshotting the state at frame start and committing changes
 // at frame end using command queues. I should study quadtree real world applications and possibly
 // try to implement one.
-use std::collections::VecDeque;
 
 use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
-    event::{Command, GameEvent},
+    event::{Bus, Command},
     game::{Game, Player},
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
@@ -52,6 +51,12 @@ fn main() -> Result<(), String> {
         mut event_pump,
         texture_creator,
     } = SdlSystems::init()?;
+
+    let Bus {
+        mut command_queue,
+        mut event_queue,
+        mut flip_queue,
+    } = Bus::default();
 
     let mut asset_manager = AssetManager::default();
     asset_manager.load_font(&texture_creator, "assets/font.png")?;
@@ -83,10 +88,6 @@ fn main() -> Result<(), String> {
         ]);
     }
 
-    let mut commands: VecDeque<Command> = VecDeque::new();
-    let mut events_buf_a: VecDeque<GameEvent> = VecDeque::new();
-    let mut events_buf_b: VecDeque<GameEvent> = VecDeque::new();
-
     let mut game = Game::init();
 
     let mut render_ctx = RenderCtx {
@@ -96,34 +97,34 @@ fn main() -> Result<(), String> {
     };
 
     'running: loop {
-        input_system(&mut commands, &mut event_pump);
+        input_system(&mut command_queue, &mut event_pump);
 
-        if commands.iter().any(|cmd| matches!(cmd, Command::Quit)) {
+        if command_queue.iter().any(|cmd| matches!(cmd, Command::Quit)) {
             break 'running;
         }
 
         selection_system(
-            &commands,
-            &mut events_buf_a,
+            &command_queue,
+            &mut event_queue,
             &mut game.state,
             &game.components,
         );
         placement_system(
-            &commands,
-            &mut events_buf_a,
+            &command_queue,
+            &mut event_queue,
             &mut game.state,
             &mut game.components,
         );
-        rule_system(&mut events_buf_a, &game.state, &game.components, &card_db);
-        flip_system(&mut events_buf_b, &events_buf_a, &mut game.components.owner);
-        win_system(&mut events_buf_a, &game.state.phase, &game.components);
+        rule_system(&mut flip_queue, &game.state, &game.components, &card_db);
+        flip_system(&mut event_queue, &flip_queue, &mut game.components.owner);
+        win_system(&mut event_queue, &game.state.phase, &game.components);
         render_system(&mut render_ctx, &game.state, &game.components, &card_db)?;
 
-        director_system(&events_buf_a, &mut game.state, &game.components.position);
+        director_system(&event_queue, &mut game.state, &game.components.position);
 
-        commands.clear();
-        events_buf_b.clear();
-        events_buf_a.clear();
+        command_queue.clear();
+        event_queue.clear();
+        flip_queue.clear();
     }
 
     Ok(())
