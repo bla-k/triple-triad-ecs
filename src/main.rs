@@ -1,33 +1,3 @@
-// Let's start from the data structures.
-//
-// In triple triad there is a 3x3 board and each player holds 5 cards in hand.
-//
-// A card has
-// - four stats (top, right, bottom, left) which can be a number between 0 and 10.
-// - a name
-// - an optional element
-//
-// Cards belong to a player, but during gameplay ownership can change.
-//
-// During a game, only card owner and their position on the board can change.
-//
-// Card list is an asset and should be loaded from a file.
-//
-// Layout should be configurable and should come from a file too.
-//
-// Textures are assets too.
-
-// TODO I am now focusing on two refactors
-// 1. remove board and hand Resources, in favor of position component.
-//      -> rename Cursor into Position
-// 2. propagate selected entity via event bus
-// 3? change selection into a bitset
-//
-// TODO after everything is migrated, I want to study further the problem of frame-snapshots using
-// quadtree/spatial hash which implies snapshotting the state at frame start and committing changes
-// at frame end using command queues. I should study quadtree real world applications and possibly
-// try to implement one.
-
 use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
