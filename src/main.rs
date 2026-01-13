@@ -32,7 +32,8 @@ use std::collections::VecDeque;
 use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
-    game::{self, Game, Player},
+    event::{Command, GameEvent},
+    game::{Game, Player},
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
     systems::{
@@ -82,7 +83,10 @@ fn main() -> Result<(), String> {
         ]);
     }
 
-    let mut events: VecDeque<game::Event> = VecDeque::new();
+    let mut commands: VecDeque<Command> = VecDeque::new();
+    let mut events_buf_a: VecDeque<GameEvent> = VecDeque::new();
+    let mut events_buf_b: VecDeque<GameEvent> = VecDeque::new();
+
     let mut game = Game::init();
 
     let mut render_ctx = RenderCtx {
@@ -92,21 +96,34 @@ fn main() -> Result<(), String> {
     };
 
     'running: loop {
-        input_system(&mut events, game.state.phase, &mut event_pump);
-        selection_system(&mut events, &mut game.state, &game.components);
-        placement_system(&mut events, &mut game.state, &mut game.components);
-        rule_system(&mut events, &game.state, &game.components, &card_db);
-        flip_system(&events, &mut game.components.owner);
-        win_system(&mut events, &game.state.phase, &game.components);
-        render_system(&mut render_ctx, &game.state, &game.components, &card_db)?;
+        input_system(&mut commands, &mut event_pump);
 
-        let running = director_system(&events, &mut game.state, &game.components.position);
-
-        events.clear();
-
-        if !running {
+        if commands.iter().any(|cmd| matches!(cmd, Command::Quit)) {
             break 'running;
         }
+
+        selection_system(
+            &commands,
+            &mut events_buf_a,
+            &mut game.state,
+            &game.components,
+        );
+        placement_system(
+            &commands,
+            &mut events_buf_a,
+            &mut game.state,
+            &mut game.components,
+        );
+        rule_system(&mut events_buf_a, &game.state, &game.components, &card_db);
+        flip_system(&mut events_buf_b, &events_buf_a, &mut game.components.owner);
+        win_system(&mut events_buf_a, &game.state.phase, &game.components);
+        render_system(&mut render_ctx, &game.state, &game.components, &card_db)?;
+
+        director_system(&events_buf_a, &mut game.state, &game.components.position);
+
+        commands.clear();
+        events_buf_b.clear();
+        events_buf_a.clear();
     }
 
     Ok(())

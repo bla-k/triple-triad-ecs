@@ -35,30 +35,6 @@ pub struct SessionState {
     pub turn: Option<Player>,
 }
 
-#[derive(Debug)]
-pub enum Event {
-    // Director Events
-    Quit,
-    CardDeselected,
-    CardSelected,
-    CardPlaced,
-    // Selection Events
-    SelectCard,
-    SelectCursorDown,
-    SelectCursorUp,
-    // Placement Events
-    PlaceCard,
-    PlaceCursorDown,
-    PlaceCursorLeft,
-    PlaceCursorRight,
-    PlaceCursorUp,
-    // Rule Events
-    RuleFlip(Entity),
-    // Win Condition Events
-    PlayerWins(Player),
-    DrawGame,
-}
-
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Phase {
     #[default]

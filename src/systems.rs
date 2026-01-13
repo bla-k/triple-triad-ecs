@@ -1,6 +1,7 @@
 use crate::{
     data::{CardDb, Stats},
-    game::{self, Components, Entity, Phase, Player, Position, SessionState},
+    event::{Command, Direction, GameEvent, MatchResult},
+    game::{Components, Entity, Phase, Player, Position, SessionState},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
     render::{RenderCtx, render_board, render_card},
     ui::{Layout, Theme},
@@ -8,30 +9,53 @@ use crate::{
 use sdl2::{EventPump, keyboard::Keycode, rect::Rect};
 use std::collections::VecDeque;
 
-#[rustfmt::skip]
-pub fn input_system(events: &mut VecDeque<game::Event>, phase: Phase, event_pump: &mut EventPump) {
-    for sdl_evt in event_pump.poll_iter() {
-        match (phase, sdl_evt) {
-            (_, sdl2::event::Event::Quit { .. }) => events.push_back(game::Event::Quit),
+pub fn input_system(commands: &mut VecDeque<Command>, event_pump: &mut EventPump) {
+    use sdl2::event::Event;
 
-            (Phase::SelectCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Down), .. }) => events.push_back(game::Event::SelectCursorDown),
-            (Phase::SelectCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Up), .. }) => events.push_back(game::Event::SelectCursorUp),
-            (Phase::SelectCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Return), .. }) => events.push_back(game::Event::SelectCard),
+    for evt in event_pump.poll_iter() {
+        if let Some(command) = match evt {
+            Event::Quit { .. } => Some(Command::Quit),
 
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Down), .. }) =>   events.push_back(game::Event::PlaceCursorDown),
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Left), .. }) =>   events.push_back(game::Event::PlaceCursorLeft),
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Right), .. }) =>  events.push_back(game::Event::PlaceCursorRight),
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Up), .. }) =>     events.push_back(game::Event::PlaceCursorUp),
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Return), .. }) => events.push_back(game::Event::PlaceCard),
-            (Phase::PlaceCard, sdl2::event::Event::KeyDown { keycode: Some(Keycode::Escape), .. }) => events.push_back(game::Event::CardDeselected),
+            Event::KeyDown {
+                keycode: Some(Keycode::Down),
+                ..
+            } => Some(Command::MoveCursor(Direction::Down)),
 
-            _ => {}
-        }
+            Event::KeyDown {
+                keycode: Some(Keycode::Left),
+                ..
+            } => Some(Command::MoveCursor(Direction::Left)),
+
+            Event::KeyDown {
+                keycode: Some(Keycode::Right),
+                ..
+            } => Some(Command::MoveCursor(Direction::Right)),
+
+            Event::KeyDown {
+                keycode: Some(Keycode::Up),
+                ..
+            } => Some(Command::MoveCursor(Direction::Up)),
+
+            Event::KeyDown {
+                keycode: Some(Keycode::Escape),
+                ..
+            } => Some(Command::Cancel),
+
+            Event::KeyDown {
+                keycode: Some(Keycode::Return),
+                ..
+            } => Some(Command::Confirm),
+
+            _ => None,
+        } {
+            commands.push_back(command);
+        };
     }
 }
 
 pub fn selection_system(
-    events: &mut VecDeque<game::Event>,
+    commands: &VecDeque<Command>,
+    game_events: &mut VecDeque<GameEvent>,
     state: &mut SessionState,
     components: &Components,
 ) {
@@ -50,13 +74,17 @@ pub fn selection_system(
     let maxlen = hand_size(player, owner, position);
 
     let mut card_selected = false;
-    for evt in events.iter() {
-        match (evt, state.cursor.as_mut()) {
-            (game::Event::SelectCursorDown, Some(Position::Hand(j))) => *j = (*j + 1) % maxlen,
-            (game::Event::SelectCursorUp, Some(Position::Hand(j))) => {
+    for command in commands {
+        match (command, state.cursor.as_mut()) {
+            (Command::MoveCursor(Direction::Down), Some(Position::Hand(j))) => {
+                *j = (*j + 1) % maxlen
+            }
+
+            (Command::MoveCursor(Direction::Up), Some(Position::Hand(j))) => {
                 *j = (*j as isize - 1).rem_euclid(maxlen as isize) as usize
             }
-            (game::Event::SelectCard, Some(Position::Hand(_))) => card_selected = true,
+
+            (Command::Confirm, Some(Position::Hand(_))) => card_selected = true,
 
             _ => {}
         }
@@ -69,12 +97,13 @@ pub fn selection_system(
     }
 
     if state.active_entity.is_some() && card_selected {
-        events.push_back(game::Event::CardSelected);
+        game_events.push_back(GameEvent::CardSelected);
     }
 }
 
 pub fn placement_system(
-    events: &mut VecDeque<game::Event>,
+    commands: &VecDeque<Command>,
+    game_events: &mut VecDeque<GameEvent>,
     state: &mut SessionState,
     components: &mut Components,
 ) {
@@ -87,21 +116,24 @@ pub fn placement_system(
     };
 
     let mut place_dst: Option<Position> = None;
-    for evt in events.iter() {
-        match (evt, state.cursor.as_mut()) {
-            (game::Event::PlaceCursorDown, Some(Position::Board(_, y))) => {
+    for command in commands.iter() {
+        match (command, state.cursor.as_mut()) {
+            (Command::MoveCursor(Direction::Down), Some(Position::Board(_, y))) => {
                 *y = (*y + 1) % Layout::GRID_SIZE
             }
-            (game::Event::PlaceCursorLeft, Some(Position::Board(x, _))) => {
+            (Command::MoveCursor(Direction::Left), Some(Position::Board(x, _))) => {
                 *x = (*x as isize - 1).rem_euclid(Layout::GRID_SIZE as isize) as usize
             }
-            (game::Event::PlaceCursorRight, Some(Position::Board(x, _))) => {
+            (Command::MoveCursor(Direction::Right), Some(Position::Board(x, _))) => {
                 *x = (*x + 1) % Layout::GRID_SIZE
             }
-            (game::Event::PlaceCursorUp, Some(Position::Board(_, y))) => {
+            (Command::MoveCursor(Direction::Up), Some(Position::Board(_, y))) => {
                 *y = (*y as isize - 1).rem_euclid(Layout::GRID_SIZE as isize) as usize
             }
-            (game::Event::PlaceCard, Some(Position::Board(x, y))) => {
+            (Command::Cancel, Some(Position::Board(_, _))) => {
+                game_events.push_back(GameEvent::CardDeselected)
+            }
+            (Command::Confirm, Some(Position::Board(x, y))) => {
                 let position = Position::Board(*x, *y);
                 // the destination cell is not occupied
                 if get_placed_entity(position, &components.position).is_none() {
@@ -140,12 +172,12 @@ pub fn placement_system(
             }
         }
 
-        events.push_back(game::Event::CardPlaced);
+        game_events.push_back(GameEvent::CardPlaced);
     }
 }
 
 pub fn rule_system(
-    events: &mut VecDeque<game::Event>,
+    game_events: &mut VecDeque<GameEvent>,
     state: &SessionState,
     components: &Components,
     card_db: &CardDb,
@@ -214,23 +246,30 @@ pub fn rule_system(
                 continue;
             }
             if check.atk_stat > (check.def_stat_fn)(neighbor_card.stats) {
-                events.push_back(game::Event::RuleFlip(neighbor_entity));
+                game_events.push_back(GameEvent::CaptureDetected {
+                    target: neighbor_entity,
+                });
             }
         }
     }
 }
 
-pub fn flip_system(events: &VecDeque<game::Event>, owners: &mut [Option<Player>]) {
-    for event in events {
-        if let game::Event::RuleFlip(entity) = event
-            && let Some(player) = owners[entity.id()].as_mut()
+pub fn flip_system(
+    events_out: &mut VecDeque<GameEvent>,
+    events_in: &VecDeque<GameEvent>,
+    owners: &mut [Option<Player>],
+) {
+    for event in events_in {
+        if let GameEvent::CaptureDetected { target } = event
+            && let Some(player) = owners[target.id()].as_mut()
         {
             *player = !*player;
+            events_out.push_back(GameEvent::CardFlipped);
         }
     }
 }
 
-pub fn win_system(events: &mut VecDeque<game::Event>, phase: &Phase, components: &Components) {
+pub fn win_system(events_out: &mut VecDeque<GameEvent>, phase: &Phase, components: &Components) {
     if !matches!(phase, Phase::TurnEnd) {
         return;
     }
@@ -257,11 +296,11 @@ pub fn win_system(events: &mut VecDeque<game::Event>, phase: &Phase, components:
         .count();
 
     if p1_score == p2_score {
-        events.push_back(game::Event::DrawGame);
+        events_out.push_back(GameEvent::MatchEnded(MatchResult::Draw));
     } else if p1_score > p2_score {
-        events.push_back(game::Event::PlayerWins(Player::P1));
+        events_out.push_back(GameEvent::MatchEnded(MatchResult::Winner(Player::P1)));
     } else {
-        events.push_back(game::Event::PlayerWins(Player::P2));
+        events_out.push_back(GameEvent::MatchEnded(MatchResult::Winner(Player::P2)));
     }
 }
 
@@ -361,14 +400,10 @@ pub fn render_system(
 
 /// Returns whether the game is running or not.
 pub fn director_system(
-    events: &VecDeque<game::Event>,
+    events: &VecDeque<GameEvent>,
     state: &mut SessionState,
     position: &[Option<Position>],
-) -> bool {
-    if events.iter().any(|e| matches!(e, game::Event::Quit)) {
-        return false;
-    }
-
+) {
     match state.phase {
         Phase::GameStart => {
             state.phase = Phase::TurnStart;
@@ -381,10 +416,7 @@ pub fn director_system(
         }
 
         Phase::SelectCard => {
-            if events
-                .iter()
-                .any(|e| matches!(e, game::Event::CardSelected))
-            {
+            if events.iter().any(|e| matches!(e, GameEvent::CardSelected)) {
                 state.phase = Phase::PlaceCard;
                 state.cursor = Some(Position::Board(1, 1));
             }
@@ -392,8 +424,8 @@ pub fn director_system(
 
         Phase::PlaceCard => {
             #[cfg_attr(any(), rustfmt::skip)]
-            let deselected = events.iter().any(|e| matches!(e, game::Event::CardDeselected));
-            let placed = events.iter().any(|e| matches!(e, game::Event::CardPlaced));
+            let deselected = events.iter().any(|e| matches!(e, GameEvent::CardDeselected));
+            let placed = events.iter().any(|e| matches!(e, GameEvent::CardPlaced));
 
             if deselected {
                 let hand_index = state
@@ -418,10 +450,13 @@ pub fn director_system(
         Phase::TurnEnd => {
             state.active_entity = None;
 
-            if events
-                .iter()
-                .any(|e| matches!(e, game::Event::DrawGame | game::Event::PlayerWins(_)))
-            {
+            if events.iter().any(|e| {
+                matches!(
+                    e,
+                    GameEvent::MatchEnded(MatchResult::Draw)
+                        | GameEvent::MatchEnded(MatchResult::Winner(_))
+                )
+            }) {
                 state.phase = Phase::GameOver;
                 state.turn = None;
             } else {
@@ -438,6 +473,4 @@ pub fn director_system(
 
         Phase::GameOver => {}
     }
-
-    true
 }
