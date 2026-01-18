@@ -91,17 +91,21 @@ impl<'a> AssetManager<'a> {
 
         let mut texture = texture_creator
             .create_texture(
-                PixelFormatEnum::RGBA32,
+                PixelFormatEnum::RGBA8888,
                 TextureAccess::Target,
                 Self::CARD_WIDTH,
                 Self::CARD_HEIGHT,
             )
             .map_err(|e| e.to_string())?;
 
+        // Tell SDL to respect texture's alpha channel when rendering it.
+        // Without this, alpha will be ignored.
+        texture.set_blend_mode(sdl2::render::BlendMode::Blend);
+
         #[rustfmt::skip]
         canvas
             .with_texture_canvas(&mut texture, |texture_canvas| {
-                texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 0));
+                texture_canvas.set_draw_color(Color::RGBA(255, 0, 255, 0));
                 texture_canvas.clear();
 
                 struct CardParts {
