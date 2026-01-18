@@ -1,7 +1,7 @@
 use sdl2::rect::Rect;
 use triple_triad::{
     data::CardDb,
-    event::{Bus, Command},
+    event::{self, Command},
     game::{Game, Player},
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
@@ -22,11 +22,11 @@ fn main() -> Result<(), String> {
         texture_creator,
     } = SdlSystems::init()?;
 
-    let Bus {
-        mut command_queue,
-        mut event_queue,
-        mut flip_queue,
-    } = Bus::default();
+    let event::Bus {
+        mut commands,
+        mut events,
+        mut flips,
+    } = event::Bus::default();
 
     let mut asset_manager = AssetManager::default();
     asset_manager.load_font(&texture_creator, "assets/font.png")?;
@@ -58,7 +58,11 @@ fn main() -> Result<(), String> {
         ]);
     }
 
-    let mut game = Game::init();
+    let Game {
+        mut state,
+        mut components,
+        ..
+    } = Game::init();
 
     let mut render_ctx = RenderCtx {
         asset_manager: &mut asset_manager,
@@ -67,34 +71,24 @@ fn main() -> Result<(), String> {
     };
 
     'running: loop {
-        input_system(&mut command_queue, &mut event_pump);
+        input_system(&mut commands, &mut event_pump);
 
-        if command_queue.iter().any(|cmd| matches!(cmd, Command::Quit)) {
+        if commands.iter().any(|cmd| matches!(cmd, Command::Quit)) {
             break 'running;
         }
 
-        selection_system(
-            &command_queue,
-            &mut event_queue,
-            &mut game.mstate,
-            &game.components,
-        );
-        placement_system(
-            &command_queue,
-            &mut event_queue,
-            &mut game.mstate,
-            &mut game.components,
-        );
-        rule_system(&mut flip_queue, &game.mstate, &game.components, &card_db);
-        flip_system(&mut event_queue, &flip_queue, &mut game.components.owner);
-        win_system(&mut event_queue, game.mstate, &game.components);
-        render_system(&mut render_ctx, &game.mstate, &game.components, &card_db)?;
+        selection_system(&commands, &mut events, &mut state, &components);
+        placement_system(&commands, &mut events, &mut state, &mut components);
+        rule_system(&mut flips, &state, &components, &card_db);
+        flip_system(&mut events, &flips, &mut components.owner);
+        win_system(&mut events, state, &components);
+        render_system(&mut render_ctx, &state, &components, &card_db)?;
 
-        director_system(&event_queue, &mut game.mstate, &game.components.position);
+        director_system(&events, &mut state, &components.position);
 
-        command_queue.clear();
-        event_queue.clear();
-        flip_queue.clear();
+        commands.clear();
+        events.clear();
+        flips.clear();
     }
 
     Ok(())

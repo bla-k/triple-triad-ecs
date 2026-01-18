@@ -36,8 +36,8 @@ pub enum MatchResult {
 
 #[derive(Debug, Default)]
 pub struct Bus {
-    pub command_queue: VecDeque<Command>,
-    pub event_queue: VecDeque<GameEvent>,
-    pub flip_queue: VecDeque<Entity>,
+    pub commands: VecDeque<Command>,
+    pub events: VecDeque<GameEvent>,
+    pub flips: VecDeque<Entity>,
 }
 

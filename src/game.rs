@@ -44,14 +44,14 @@ pub enum TurnPhase {
 
 pub struct Game {
     pub components: Components,
-    pub mstate: MatchState,
+    pub state: MatchState,
 }
 
 impl Game {
     pub fn init() -> Self {
         Game {
             components: Components::default(),
-            mstate: MatchState::GameStart,
+            state: MatchState::GameStart,
         }
     }
 }
