@@ -1,7 +1,8 @@
 use crate::{
+    core::battle::Entity,
     data::{CardDb, Stats},
     event::{Command, Direction, GameEvent, MatchResult},
-    game::{Components, Entity, MatchState, Player, Position, TurnPhase},
+    game::{Components, MatchState, Player, Position, TurnPhase},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
     render::{RenderCtx, render_board, render_card},
     rules::{wrap_decr, wrap_incr},
@@ -140,12 +141,12 @@ pub fn placement_system(
     // shift hand that has position > saved
     // fire event placed
     if let Some(position) = place_dst {
-        let Some(Position::Hand(selected_hand_idx)) = components.position[entity.id()] else {
+        let Some(Position::Hand(selected_hand_idx)) = components.position[entity.index()] else {
             return;
         };
 
-        components.position[entity.id()] = Some(position);
-        let player = &components.owner[entity.id()];
+        components.position[entity.index()] = Some(position);
+        let player = &components.owner[entity.index()];
 
         for e in 0..components.owner.len() {
             if &components.owner[e] != player {
@@ -247,7 +248,7 @@ pub fn flip_system(
     owners: &mut [Option<Player>],
 ) {
     for entity in events_in {
-        if let Some(player) = owners[entity.id()].as_mut() {
+        if let Some(player) = owners[entity.index()].as_mut() {
             *player = !*player;
             events_out.push_back(GameEvent::CardFlipped);
         }
@@ -329,8 +330,14 @@ pub fn render_system(
 
         _ => &None,
     };
-    for j in 0..10 {
-        render_card(ctx, Entity(j), *active_entity, components, card_db)?;
+    for j in 0..Entity::MAX {
+        render_card(
+            ctx,
+            Entity::new(j).expect("Entity id is in range"),
+            *active_entity,
+            components,
+            card_db,
+        )?;
     }
 
     // render cursor
@@ -467,7 +474,7 @@ pub fn director_system(
             let placed = events.iter().any(|e| matches!(e, GameEvent::CardPlaced));
 
             if deselected {
-                let cursor = position[entity.id()].map_or(0, |pos| match pos {
+                let cursor = position[entity.index()].map_or(0, |pos| match pos {
                     Position::Hand(j) => j,
                     _ => 0,
                 });

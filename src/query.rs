@@ -1,6 +1,7 @@
 use crate::{
+    core::battle::Entity,
     data::{CardDb, Stats},
-    game::{Components, Entity, Player, Position},
+    game::{Components, Player, Position},
 };
 
 // ================================ CardView ===================================
@@ -20,9 +21,9 @@ pub fn get_card_view<'a>(
     components: &'a Components,
     card_db: &'a CardDb,
 ) -> Option<CardView<'a>> {
-    let owner = components.owner[entity.id()].as_ref()?;
-    let position = components.position[entity.id()].as_ref()?;
-    let card_id = components.card[entity.id()]?;
+    let owner = components.owner[entity.index()].as_ref()?;
+    let position = components.position[entity.index()].as_ref()?;
+    let card_id = components.card[entity.index()]?;
 
     Some(CardView {
         id: card_id,
@@ -49,7 +50,7 @@ pub fn get_owned_entity(
         .enumerate()
         .find_map(|(j, (&owner, &pos))| {
             if owner == Some(player) && pos == Some(position) {
-                Some(Entity(j))
+                Some(Entity::new(j as u8).expect("Entity must exist for player, position"))
             } else {
                 None
             }
@@ -63,7 +64,7 @@ pub fn get_owned_entity(
 pub fn get_placed_entity(position: Position, positions: &[Option<Position>]) -> Option<Entity> {
     positions.iter().enumerate().find_map(|(j, &pos)| {
         if pos == Some(position) {
-            Some(Entity(j))
+            Some(Entity::new(j as u8).expect("Entity must exist for position"))
         } else {
             None
         }

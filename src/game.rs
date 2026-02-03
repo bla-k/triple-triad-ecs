@@ -1,18 +1,8 @@
+use crate::core::battle::Entity;
 use std::ops::Not;
 
 // TODO move this next to carddb
 pub type CardId = usize;
-
-// =========================================== Entity ==============================================
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Entity(pub(crate) usize);
-
-impl Entity {
-    pub fn id(&self) -> usize {
-        self.0
-    }
-}
 
 // ======================================== Match State ============================================
 

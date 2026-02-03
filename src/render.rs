@@ -1,6 +1,7 @@
 use crate::{
+    core::battle::Entity,
     data::CardDb,
-    game::{Components, Entity, Player, Position},
+    game::{Components, Player, Position},
     query::{CardView, get_card_view},
     sdl::AssetManager,
     ui::{Layout, Theme, UI},

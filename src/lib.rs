@@ -7,3 +7,5 @@ pub mod rules;
 pub mod sdl;
 pub mod systems;
 pub mod ui;
+
+pub mod core;
