@@ -1,5 +1,5 @@
 use crate::{
-    core::battle::{BoardCoords, Components, Direction, Entity, Player, Position},
+    core::battle::{BoardCoords, ComponentArray, Components, Direction, Entity, Player, Position},
     data::{CardDb, Stats},
     event::{Command, GameEvent, MatchResult},
     game::{MatchState, TurnPhase},
@@ -145,14 +145,14 @@ pub fn placement_system(
     // shift hand that has position > saved
     // fire event placed
     if let Some(position) = place_dst {
-        let Some(Position::Hand(selected_hand_idx)) = components.position[entity.index()] else {
+        let Some(Position::Hand(selected_hand_idx)) = components.position[*entity] else {
             return;
         };
 
-        components.position[entity.index()] = Some(position);
-        let player = &components.owner[entity.index()];
+        components.position[*entity] = Some(position);
+        let player = &components.owner[*entity];
 
-        for e in 0..components.owner.len() {
+        for e in Entity::iter() {
             if &components.owner[e] != player {
                 continue;
             }
@@ -246,10 +246,10 @@ pub fn rule_system(
 pub fn flip_system(
     events_out: &mut VecDeque<GameEvent>,
     events_in: &VecDeque<Entity>,
-    owners: &mut [Option<Player>],
+    owners: &mut ComponentArray<Player>,
 ) {
     for entity in events_in {
-        if let Some(player) = owners[entity.index()].as_mut() {
+        if let Some(player) = owners[*entity].as_mut() {
             *player = !*player;
             events_out.push_back(GameEvent::CardFlipped);
         }
@@ -420,7 +420,7 @@ pub fn render_system(
 pub fn director_system(
     events: &VecDeque<GameEvent>,
     mstate: &mut MatchState,
-    position: &[Option<Position>],
+    position: &ComponentArray<Position>,
 ) {
     *mstate = match mstate {
         MatchState::GameStart => MatchState::Turn {
@@ -469,7 +469,7 @@ pub fn director_system(
             let placed = events.iter().any(|e| matches!(e, GameEvent::CardPlaced));
 
             if deselected {
-                let cursor = position[entity.index()].map_or(0, |pos| match pos {
+                let cursor = position[*entity].map_or(0, |pos| match pos {
                     Position::Hand(j) => j,
                     _ => 0,
                 });

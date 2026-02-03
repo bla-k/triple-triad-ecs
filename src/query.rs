@@ -1,5 +1,5 @@
 use crate::{
-    core::battle::{Components, Entity, Player, Position},
+    core::battle::{ComponentArray, Components, Entity, Player, Position},
     data::{CardDb, Stats},
 };
 
@@ -20,9 +20,9 @@ pub fn get_card_view<'a>(
     components: &'a Components,
     card_db: &'a CardDb,
 ) -> Option<CardView<'a>> {
-    let owner = components.owner[entity.index()].as_ref()?;
-    let position = components.position[entity.index()].as_ref()?;
-    let card_id = components.card[entity.index()]?;
+    let owner = components.owner[entity].as_ref()?;
+    let position = components.position[entity].as_ref()?;
+    let card_id = components.card[entity]?;
 
     Some(CardView {
         id: card_id,
@@ -40,32 +40,30 @@ pub fn get_card_view<'a>(
 pub fn get_owned_entity(
     player: Player,
     position: Position,
-    owners: &[Option<Player>],
-    positions: &[Option<Position>],
+    owners: &ComponentArray<Player>,
+    positions: &ComponentArray<Position>,
 ) -> Option<Entity> {
-    Entity::iter()
-        .find(|e| owners[e.index()] == Some(player) && positions[e.index()] == Some(position))
+    Entity::iter().find(|&e| owners[e] == Some(player) && positions[e] == Some(position))
 }
 
 /// Returns the entity corresponding to the query `Position`.
 ///
 /// This is useful when you have to match a card that is placed on the board, but you don't care
 /// about card's ownership.
-pub fn get_placed_entity(position: Position, positions: &[Option<Position>]) -> Option<Entity> {
-    Entity::iter().find(|e| positions[e.index()] == Some(position))
+pub fn get_placed_entity(
+    position: Position,
+    positions: &ComponentArray<Position>,
+) -> Option<Entity> {
+    Entity::iter().find(|&e| positions[e] == Some(position))
 }
 
 /// Returns current player's hand size.
 pub fn hand_size(
     player: Player,
-    owners: &[Option<Player>],
-    positions: &[Option<Position>],
+    owners: &ComponentArray<Player>,
+    positions: &ComponentArray<Position>,
 ) -> usize {
-    owners
-        .iter()
-        .zip(positions.iter())
-        .filter(|&(&owner, &position)| {
-            owner == Some(player) && matches!(position, Some(Position::Hand(_)))
-        })
+    Entity::iter()
+        .filter(|&e| owners[e] == Some(player) && matches!(positions[e], Some(Position::Hand(_))))
         .count()
 }
