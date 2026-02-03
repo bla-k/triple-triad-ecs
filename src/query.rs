@@ -1,7 +1,6 @@
 use crate::{
-    core::battle::{Entity, Player, Position},
+    core::battle::{Components, Entity, Player, Position},
     data::{CardDb, Stats},
-    game::Components,
 };
 
 // ================================ CardView ===================================
