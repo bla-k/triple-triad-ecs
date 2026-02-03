@@ -1,4 +1,4 @@
-use crate::core::battle::{Entity, Player};
+use crate::core::battle::{Entity, Player, Position};
 
 // TODO move this next to carddb
 pub type CardId = usize;
@@ -43,14 +43,6 @@ impl Game {
             state: MatchState::GameStart,
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Position {
-    /// (x, y) (0..3, 0..3)
-    Board(usize, usize),
-    /// index 0..5
-    Hand(usize),
 }
 
 // =============================== Components ==================================

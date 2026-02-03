@@ -1,8 +1,8 @@
 use crate::{
-    core::battle::{Entity, Player},
+    core::battle::{BoardCoords, Direction, Entity, Player, Position},
     data::{CardDb, Stats},
-    event::{Command, Direction, GameEvent, MatchResult},
-    game::{Components, MatchState, Position, TurnPhase},
+    event::{Command, GameEvent, MatchResult},
+    game::{Components, MatchState, TurnPhase},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
     render::{RenderCtx, render_board, render_card},
     rules::{wrap_decr, wrap_incr},
@@ -125,7 +125,11 @@ pub fn placement_system(
             Command::MoveCursor(Direction::Up) => cursor.1 = wrap_decr(cursor.1, Layout::GRID_SIZE),
             Command::Cancel => game_events.push_back(GameEvent::CardDeselected),
             Command::Confirm => {
-                let position = Position::Board(cursor.0, cursor.1);
+                let Some(board_coords) = BoardCoords::new(cursor.0, cursor.1) else {
+                    eprintln!("Cursor out of bounds. {} {}", cursor.0, cursor.1);
+                    continue;
+                };
+                let position = Position::Board(board_coords);
                 // the destination cell is not occupied
                 if get_placed_entity(position, &components.position).is_none() {
                     place_dst = Some(position);
@@ -184,49 +188,46 @@ pub fn rule_system(
         return;
     };
 
-    let &Position::Board(placed_x, placed_y) = placed_card.position else {
+    let &Position::Board(board_coords) = placed_card.position else {
         return;
     };
 
     let &Stats { top, rgt, btm, lft } = placed_card.stats;
 
     struct BattleCheck {
-        in_bounds: bool,
-        pos: Position,
+        target: Option<BoardCoords>,
         atk_stat: u8,
         def_stat_fn: fn(&Stats) -> u8,
     }
 
     let checks = [
         BattleCheck {
-            in_bounds: placed_x > 0,
-            pos: Position::Board((placed_x as isize - 1) as usize, placed_y),
+            target: board_coords.neighbor(Direction::Left),
             atk_stat: lft,
             def_stat_fn: |s| s.rgt,
         },
         BattleCheck {
-            in_bounds: placed_x < 2,
-            pos: Position::Board(placed_x + 1, placed_y),
+            target: board_coords.neighbor(Direction::Right),
             atk_stat: rgt,
             def_stat_fn: |s| s.lft,
         },
         BattleCheck {
-            in_bounds: placed_y > 0,
-            pos: Position::Board(placed_x, (placed_y as isize - 1) as usize),
+            target: board_coords.neighbor(Direction::Up),
             atk_stat: top,
             def_stat_fn: |s| s.btm,
         },
         BattleCheck {
-            in_bounds: placed_y < 2,
-            pos: Position::Board(placed_x, placed_y + 1),
+            target: board_coords.neighbor(Direction::Down),
             atk_stat: btm,
             def_stat_fn: |s| s.top,
         },
     ];
 
     for check in checks {
-        if check.in_bounds {
-            let Some(neighbor_entity) = get_placed_entity(check.pos, &components.position) else {
+        if let Some(board_coords) = check.target {
+            let Some(neighbor_entity) =
+                get_placed_entity(Position::Board(board_coords), &components.position)
+            else {
                 continue;
             };
             let Some(neighbor_card) = get_card_view(neighbor_entity, components, card_db) else {
@@ -271,7 +272,7 @@ pub fn win_system(
     let placed_count = components
         .position
         .iter()
-        .filter(|&pos| matches!(pos, Some(Position::Board(_, _))))
+        .filter(|&pos| matches!(pos, Some(Position::Board(_))))
         .count();
 
     if placed_count < 9 {

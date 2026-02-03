@@ -1,5 +1,7 @@
 use std::{iter::FusedIterator, ops::Not};
 
+pub const BOARD_SIZE: usize = 3;
+
 // =========================================== Entity ==============================================
 
 /// Represents the unique identifier for an ECS Entity in a match.
@@ -70,4 +72,71 @@ impl Not for Player {
             Player::P2 => Player::P1,
         }
     }
+}
+
+// ========================================== Position =============================================
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Position {
+    Board(BoardCoords),
+    Hand(usize),
+}
+
+/// Board coordinates with guaranteed validity.
+///
+/// ```txt
+///      x=0 x=1 x=2
+///     +---+---+---+
+/// y=0 |   |   |   |
+///     +---+---+---+
+/// y=1 |   |   |   |
+///     +---+---+---+
+/// y=2 |   |   |   |
+///     +---+---+---+
+/// ```
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BoardCoords(usize, usize);
+
+impl BoardCoords {
+    pub fn new(x: usize, y: usize) -> Option<Self> {
+        (x < BOARD_SIZE && y < BOARD_SIZE).then_some(Self(x, y))
+    }
+
+    #[inline]
+    pub fn index(&self) -> usize {
+        self.1 * BOARD_SIZE + self.0
+    }
+
+    #[inline]
+    pub fn x(&self) -> usize {
+        self.0
+    }
+
+    #[inline]
+    pub fn y(&self) -> usize {
+        self.1
+    }
+
+    pub fn neighbor(&self, dir: Direction) -> Option<Self> {
+        match dir {
+            Direction::Down if self.1 < BOARD_SIZE - 1 => Some(Self(self.0, self.1 + 1)),
+
+            Direction::Left if self.0 > 0 => Some(Self(self.0 - 1, self.1)),
+
+            Direction::Right if self.0 < BOARD_SIZE - 1 => Some(Self(self.0 + 1, self.1)),
+
+            Direction::Up if self.1 > 0 => Some(Self(self.0, self.1 - 1)),
+
+            _ => None,
+        }
+    }
+}
+
+/// Cardinal direction on the board.
+#[derive(Debug)]
+pub enum Direction {
+    Down,
+    Left,
+    Right,
+    Up,
 }

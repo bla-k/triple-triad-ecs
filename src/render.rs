@@ -1,7 +1,7 @@
 use crate::{
-    core::battle::{Entity, Player},
+    core::battle::{Entity, Player, Position},
     data::CardDb,
-    game::{Components, Position},
+    game::Components,
     query::{CardView, get_card_view},
     sdl::AssetManager,
     ui::{Layout, Theme, UI},
@@ -92,17 +92,29 @@ pub fn render_card(
 }
 
 /// Returns card's destination region, extracting it from `Layout`.
-#[rustfmt::skip]
 fn get_dest_rect(active_entity: Option<Entity>, card_view: &CardView, layout: &Layout) -> Rect {
     let Layout { board, hand, .. } = layout;
-    let &CardView { entity, position, owner, .. } = card_view;
+    let &CardView {
+        entity,
+        position,
+        owner,
+        ..
+    } = card_view;
 
     match (active_entity, position, owner) {
-        (Some(hovered), &Position::Hand(j), Player::P1) if hovered == entity => hand.p1[j].right_shifted(Layout::HOVER_SHIFT),
-        (            _, &Position::Hand(j), Player::P1)                      => hand.p1[j],
-        (Some(hovered), &Position::Hand(j), Player::P2) if hovered == entity => hand.p2[j].left_shifted(Layout::HOVER_SHIFT),
-        (            _, &Position::Hand(j), Player::P2)                      => hand.p2[j],
-        (            _, &Position::Board(x, y),      _)                      => board[y * Layout::GRID_SIZE + x],
+        (Some(hovered), &Position::Hand(j), Player::P1) if hovered == entity => {
+            hand.p1[j].right_shifted(Layout::HOVER_SHIFT)
+        }
+
+        (_, &Position::Hand(j), Player::P1) => hand.p1[j],
+
+        (Some(hovered), &Position::Hand(j), Player::P2) if hovered == entity => {
+            hand.p2[j].left_shifted(Layout::HOVER_SHIFT)
+        }
+
+        (_, &Position::Hand(j), Player::P2) => hand.p2[j],
+
+        (_, &Position::Board(board_coords), _) => board[board_coords.index()],
     }
 }
 

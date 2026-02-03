@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::core::battle::{Entity, Player};
+use crate::core::battle::{Direction, Entity, Player};
 
 #[derive(Debug)]
 pub enum Command {
@@ -8,14 +8,6 @@ pub enum Command {
     Confirm,
     MoveCursor(Direction),
     Quit,
-}
-
-#[derive(Debug)]
-pub enum Direction {
-    Down,
-    Left,
-    Right,
-    Up,
 }
 
 #[derive(Debug)]
