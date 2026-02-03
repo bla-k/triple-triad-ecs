@@ -44,17 +44,8 @@ pub fn get_owned_entity(
     owners: &[Option<Player>],
     positions: &[Option<Position>],
 ) -> Option<Entity> {
-    owners
-        .iter()
-        .zip(positions.iter())
-        .enumerate()
-        .find_map(|(j, (&owner, &pos))| {
-            if owner == Some(player) && pos == Some(position) {
-                Some(Entity::new(j as u8).expect("Entity must exist for player, position"))
-            } else {
-                None
-            }
-        })
+    Entity::iter()
+        .find(|e| owners[e.index()] == Some(player) && positions[e.index()] == Some(position))
 }
 
 /// Returns the entity corresponding to the query `Position`.
@@ -62,13 +53,7 @@ pub fn get_owned_entity(
 /// This is useful when you have to match a card that is placed on the board, but you don't care
 /// about card's ownership.
 pub fn get_placed_entity(position: Position, positions: &[Option<Position>]) -> Option<Entity> {
-    positions.iter().enumerate().find_map(|(j, &pos)| {
-        if pos == Some(position) {
-            Some(Entity::new(j as u8).expect("Entity must exist for position"))
-        } else {
-            None
-        }
-    })
+    Entity::iter().find(|e| positions[e.index()] == Some(position))
 }
 
 /// Returns current player's hand size.

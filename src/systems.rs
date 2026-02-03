@@ -330,14 +330,8 @@ pub fn render_system(
 
         _ => &None,
     };
-    for j in 0..Entity::MAX {
-        render_card(
-            ctx,
-            Entity::new(j).expect("Entity id is in range"),
-            *active_entity,
-            components,
-            card_db,
-        )?;
+    for entity in Entity::iter() {
+        render_card(ctx, entity, *active_entity, components, card_db)?;
     }
 
     // render cursor
