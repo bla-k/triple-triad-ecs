@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::core::battle::{Direction, Entity, Player};
+use crate::core::battle::{BattleResult, Direction, Entity};
 
 #[derive(Debug)]
 pub enum Command {
@@ -17,13 +17,7 @@ pub enum GameEvent {
     CardPlaced,
     CaptureDetected { target: Entity },
     CardFlipped,
-    MatchEnded(MatchResult),
-}
-
-#[derive(Debug)]
-pub enum MatchResult {
-    Draw,
-    Winner(Player),
+    MatchEnded(BattleResult),
 }
 
 #[derive(Debug, Default)]
@@ -32,4 +26,3 @@ pub struct Bus {
     pub events: VecDeque<GameEvent>,
     pub flips: VecDeque<Entity>,
 }
-

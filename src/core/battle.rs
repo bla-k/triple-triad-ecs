@@ -104,6 +104,8 @@ pub enum Position {
 pub struct BoardCoords(usize, usize);
 
 impl BoardCoords {
+    pub const CENTER: Self = Self(1, 1);
+
     pub fn new(x: usize, y: usize) -> Option<Self> {
         (x < BOARD_SIZE && y < BOARD_SIZE).then_some(Self(x, y))
     }
@@ -121,6 +123,22 @@ impl BoardCoords {
     #[inline]
     pub fn y(&self) -> usize {
         self.1
+    }
+
+    pub fn moved_down(&self) -> Self {
+        Self(self.0, (self.1 + 1) % BOARD_SIZE)
+    }
+
+    pub fn moved_left(&self) -> Self {
+        Self((self.0 + BOARD_SIZE - 1) % BOARD_SIZE, self.1)
+    }
+
+    pub fn moved_right(&self) -> Self {
+        Self((self.0 + 1) % BOARD_SIZE, self.1)
+    }
+
+    pub fn moved_up(&self) -> Self {
+        Self(self.0, (self.1 + BOARD_SIZE - 1) % BOARD_SIZE)
     }
 
     pub fn neighbor(&self, dir: Direction) -> Option<Self> {
@@ -233,4 +251,34 @@ impl<T> IndexMut<Entity> for ComponentArray<T> {
     fn index_mut(&mut self, entity: Entity) -> &mut Self::Output {
         &mut self.0[entity.index()]
     }
+}
+
+//============================================ State ===============================================
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum State {
+    #[default]
+    Start,
+    Turn {
+        phase: TurnPhase,
+        player: Player,
+    },
+    End {
+        result: BattleResult,
+    },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum TurnPhase {
+    Start,
+    SelectCard { cursor: usize, entity: Entity },
+    PlaceCard { cursor: BoardCoords, entity: Entity },
+    ResolveRules { entity: Entity },
+    End,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum BattleResult {
+    Draw,
+    Win(Player),
 }

@@ -85,7 +85,7 @@ fn main() -> Result<(), String> {
         win_system(&mut events, state, &components);
         render_system(&mut render_ctx, &state, &components, &card_db)?;
 
-        director_system(&events, &mut state, &components.position);
+        director_system(&events, &mut state, &components.owner, &components.position);
 
         commands.clear();
         events.clear();
