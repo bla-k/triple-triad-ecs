@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::core::battle::Entity;
-use crate::game::Player;
+use crate::core::battle::{Entity, Player};
 
 #[derive(Debug)]
 pub enum Command {

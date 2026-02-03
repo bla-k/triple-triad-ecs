@@ -1,8 +1,8 @@
 use crate::{
-    core::battle::Entity,
+    core::battle::{Entity, Player},
     data::{CardDb, Stats},
     event::{Command, Direction, GameEvent, MatchResult},
-    game::{Components, MatchState, Player, Position, TurnPhase},
+    game::{Components, MatchState, Position, TurnPhase},
     query::{get_card_view, get_owned_entity, get_placed_entity, hand_size},
     render::{RenderCtx, render_board, render_card},
     rules::{wrap_decr, wrap_incr},

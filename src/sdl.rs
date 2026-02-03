@@ -9,7 +9,7 @@ use sdl2::{
     video::{Window, WindowContext},
 };
 
-use crate::{data::Element, game::Player, ui::Theme};
+use crate::{core::battle::Player, data::Element, ui::Theme};
 
 // =============================== SdlSystems ==================================
 

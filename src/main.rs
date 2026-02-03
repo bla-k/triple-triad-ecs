@@ -1,8 +1,9 @@
 use sdl2::rect::Rect;
 use triple_triad::{
+    core::battle::Player,
     data::CardDb,
     event::{self, Command},
-    game::{Game, Player},
+    game::Game,
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
     systems::{

@@ -1,9 +1,9 @@
-use std::iter::FusedIterator;
+use std::{iter::FusedIterator, ops::Not};
 
 // =========================================== Entity ==============================================
 
 /// Represents the unique identifier for an ECS Entity in a match.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Entity(u8);
 
 impl Entity {
@@ -50,3 +50,24 @@ impl DoubleEndedIterator for EntityIter {
 impl ExactSizeIterator for EntityIter {}
 
 impl FusedIterator for EntityIter {}
+
+// =========================================== Player ==============================================
+
+/// Player identifier.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum Player {
+    P1 = 0,
+    P2 = 1,
+}
+
+impl Not for Player {
+    type Output = Player;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Player::P1 => Player::P2,
+            Player::P2 => Player::P1,
+        }
+    }
+}

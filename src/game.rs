@@ -1,5 +1,4 @@
-use crate::core::battle::Entity;
-use std::ops::Not;
+use crate::core::battle::{Entity, Player};
 
 // TODO move this next to carddb
 pub type CardId = usize;
@@ -42,24 +41,6 @@ impl Game {
         Game {
             components: Components::default(),
             state: MatchState::GameStart,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(u8)]
-pub enum Player {
-    P1 = 0,
-    P2 = 1,
-}
-
-impl Not for Player {
-    type Output = Player;
-
-    fn not(self) -> Self::Output {
-        match self {
-            Player::P1 => Player::P2,
-            Player::P2 => Player::P1,
         }
     }
 }
