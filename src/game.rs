@@ -1,7 +1,7 @@
-use crate::core::battle::{Entity, Player, Position};
-
-// TODO move this next to carddb
-pub type CardId = usize;
+use crate::{
+    core::battle::{Entity, Player, Position},
+    data::CardId,
+};
 
 // ======================================== Match State ============================================
 

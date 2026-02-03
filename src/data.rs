@@ -4,6 +4,9 @@ use std::{
     str::FromStr,
 };
 
+// TODO move this next to carddb
+pub type CardId = usize;
+
 #[derive(Debug)]
 pub struct CardDb {
     pub elements: Vec<Element>,
