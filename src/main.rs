@@ -1,9 +1,8 @@
 use sdl2::rect::Rect;
 use triple_triad::{
-    core::battle::Player,
+    core::battle::{Battle, Player},
     data::CardDb,
     event::{self, Command},
-    game::Game,
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
     systems::{
@@ -59,11 +58,11 @@ fn main() -> Result<(), String> {
         ]);
     }
 
-    let Game {
+    let Battle {
         mut state,
         mut components,
         ..
-    } = Game::init();
+    } = Battle::init();
 
     let mut render_ctx = RenderCtx {
         asset_manager: &mut asset_manager,
