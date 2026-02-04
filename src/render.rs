@@ -49,7 +49,6 @@ pub fn render_card(
     components: &Components,
     card_db: &CardDb
 ) -> Result<(), String> {
-//  let UI { layout, .. } = ui;
 
     let Some(card_view) = get_card_view(entity, components, card_db) else {
         return Err(format!("No such entity: '{entity:?}'"));

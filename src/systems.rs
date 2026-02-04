@@ -87,8 +87,20 @@ pub fn selection_system(
         }
     }
 
+    let Some(target) = get_owned_entity(
+        *player,
+        Position::Hand(*cursor),
+        &components.owner,
+        &components.position,
+    ) else {
+        eprintln!("Hovering over nonexistent card.");
+        return;
+    };
+
+    *entity = target;
+
     if card_selected {
-        game_events.push_back(GameEvent::CardSelected { target: *entity });
+        game_events.push_back(GameEvent::CardSelected { target });
     }
 }
 
