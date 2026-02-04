@@ -5,6 +5,7 @@ use triple_triad::{
     event::{self, Command},
     render::RenderCtx,
     sdl::{AssetManager, BakeCardCfg, SdlSystems, Sprite},
+    sys::rand::Rng,
     systems::{
         director_system, flip_system, input_system, placement_system, render_system, rule_system,
         selection_system, win_system,
@@ -58,9 +59,31 @@ fn main() -> Result<(), String> {
         ]);
     }
 
+    let mut rng = Rng::init();
+    //let mut rng = Rng::from_seed([
+    //    0xe92c5a15dfffe2b9,
+    //    0x1a12045ae731366f,
+    //    0x3830d27519e55407,
+    //    0x84f0f610b170b3e6,
+    //]);
+
+    println!("{}", rng);
+
     let battle_setup = BattleSetup {
-        p1_hand: [0, 1, 2, 3, 4],
-        p2_hand: [5, 6, 7, 8, 9],
+        p1_hand: [
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+        ],
+        p2_hand: [
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
+        ],
     };
 
     let Battle {

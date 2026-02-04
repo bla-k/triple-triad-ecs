@@ -4,9 +4,6 @@ use std::{
     str::FromStr,
 };
 
-// TODO move this next to carddb
-pub type CardId = usize;
-
 #[derive(Debug)]
 pub struct CardDb {
     pub elements: Vec<Element>,
@@ -15,7 +12,7 @@ pub struct CardDb {
 }
 
 impl CardDb {
-    const CARD_COUNT: usize = 110;
+    pub const CARD_COUNT: usize = 110;
 
     fn from_reader<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut elements = Vec::with_capacity(Self::CARD_COUNT);

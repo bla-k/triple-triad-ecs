@@ -4,7 +4,7 @@ use std::{
     slice::Iter,
 };
 
-use crate::data::CardId;
+use crate::core::data::CardId;
 
 pub const BOARD_SIZE: usize = 3;
 
@@ -50,6 +50,7 @@ impl From<BattleSetup> for Battle {
     }
 }
 
+#[derive(Debug)]
 pub struct BattleSetup {
     pub p1_hand: [CardId; HAND_SIZE],
     pub p2_hand: [CardId; HAND_SIZE],
