@@ -1,6 +1,6 @@
 use sdl2::rect::Rect;
 use triple_triad::{
-    core::battle::{Battle, Player},
+    core::battle::{Battle, BattleSetup, Player},
     data::CardDb,
     event::{self, Command},
     render::RenderCtx,
@@ -58,11 +58,16 @@ fn main() -> Result<(), String> {
         ]);
     }
 
+    let battle_setup = BattleSetup {
+        p1_hand: [0, 1, 2, 3, 4],
+        p2_hand: [5, 6, 7, 8, 9],
+    };
+
     let Battle {
         mut state,
         mut components,
         ..
-    } = Battle::init();
+    } = battle_setup.into();
 
     let mut render_ctx = RenderCtx {
         asset_manager: &mut asset_manager,

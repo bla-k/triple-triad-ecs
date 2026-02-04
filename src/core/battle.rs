@@ -8,6 +8,12 @@ use crate::data::CardId;
 
 pub const BOARD_SIZE: usize = 3;
 
+pub const HAND_SIZE: usize = 5;
+
+pub const P1_ENTITIES: EntityIter = EntityIter(0..5);
+
+pub const P2_ENTITIES: EntityIter = EntityIter(5..10);
+
 // =========================================== Battle ==============================================
 
 pub struct Battle {
@@ -15,70 +21,60 @@ pub struct Battle {
     pub state: State,
 }
 
-impl Battle {
-    pub fn init() -> Self {
+impl From<BattleSetup> for Battle {
+    fn from(value: BattleSetup) -> Self {
+        let mut components = Components::default();
+
+        let Components {
+            card,
+            owner,
+            position,
+        } = &mut components;
+
+        for entity in P1_ENTITIES {
+            card.insert(entity, value.p1_hand[entity.index()]);
+            owner.insert(entity, Player::P1);
+            position.insert(entity, Position::Hand(entity.index()));
+        }
+
+        for entity in P2_ENTITIES {
+            card.insert(entity, value.p2_hand[entity.index() - HAND_SIZE]);
+            owner.insert(entity, Player::P2);
+            position.insert(entity, Position::Hand(entity.index() - HAND_SIZE));
+        }
+
         Self {
-            components: Components::default(),
+            components,
             state: State::default(),
         }
     }
 }
 
+pub struct BattleSetup {
+    pub p1_hand: [CardId; HAND_SIZE],
+    pub p2_hand: [CardId; HAND_SIZE],
+}
+
 // ========================================= Components ============================================
 
+#[derive(Debug, Default)]
 pub struct Components {
     pub card: ComponentArray<CardId>,
     pub owner: ComponentArray<Player>,
     pub position: ComponentArray<Position>,
 }
 
-impl Default for Components {
+#[derive(Debug)]
+pub struct ComponentArray<T>([Option<T>; Entity::MAX as usize]);
+
+impl<T> Default for ComponentArray<T>
+where
+    T: Copy,
+{
     fn default() -> Self {
-        let card = [
-            Some(1),
-            Some(4),
-            Some(8),
-            Some(12),
-            Some(16),
-            Some(5),
-            Some(10),
-            Some(15),
-            Some(20),
-            Some(109),
-        ];
-        let owner = [
-            Some(Player::P1),
-            Some(Player::P1),
-            Some(Player::P1),
-            Some(Player::P1),
-            Some(Player::P1),
-            Some(Player::P2),
-            Some(Player::P2),
-            Some(Player::P2),
-            Some(Player::P2),
-            Some(Player::P2),
-        ];
-        let position = [
-            Some(Position::Hand(0)),
-            Some(Position::Hand(1)),
-            Some(Position::Hand(2)),
-            Some(Position::Hand(3)),
-            Some(Position::Hand(4)),
-            Some(Position::Hand(0)),
-            Some(Position::Hand(1)),
-            Some(Position::Hand(2)),
-            Some(Position::Hand(3)),
-            Some(Position::Hand(4)),
-        ];
-        Components {
-            card: ComponentArray(card),
-            owner: ComponentArray(owner),
-            position: ComponentArray(position),
-        }
+        Self([None; Entity::MAX as usize])
     }
 }
-
-pub struct ComponentArray<T>([Option<T>; Entity::MAX as usize]);
 
 impl<T> ComponentArray<T> {
     pub fn iter(&self) -> Iter<'_, Option<T>> {
