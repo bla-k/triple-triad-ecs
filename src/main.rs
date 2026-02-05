@@ -1,6 +1,10 @@
 use sdl2::rect::Rect;
+use std::array;
 use triple_triad::{
-    core::battle::{Battle, BattleSetup, Player},
+    core::{
+        battle::{Battle, BattleSetup, Player},
+        data::CardId,
+    },
     data::CardDb,
     event::{self, Command},
     render::RenderCtx,
@@ -70,20 +74,8 @@ fn main() -> Result<(), String> {
     println!("{}", rng);
 
     let battle_setup = BattleSetup {
-        p1_hand: [
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-        ],
-        p2_hand: [
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-            rng.next_bounded(CardDb::CARD_COUNT as u64) as usize,
-        ],
+        p1_hand: array::from_fn(|_| unsafe { CardId::new_unchecked(rng.u8_in(0..CardId::MAX)) }),
+        p2_hand: array::from_fn(|_| unsafe { CardId::new_unchecked(rng.u8_in(0..CardId::MAX)) }),
     };
 
     let Battle {

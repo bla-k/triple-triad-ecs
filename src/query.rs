@@ -25,11 +25,11 @@ pub fn get_card_view<'a>(
     let card_id = components.card[entity]?;
 
     Some(CardView {
-        id: card_id,
+        id: card_id.index(),
         entity,
         owner,
         position,
-        stats: &card_db.stats[card_id],
+        stats: &card_db.stats[card_id.index()],
     })
 }
 

@@ -1,60 +1,103 @@
-use std::collections::hash_map::DefaultHasher;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::ops::Range;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub struct Rng([u64; 4]);
+pub struct Rng {
+    state: [u64; 4],
+    buffer: u64,
+    buffer_remaining: u8,
+}
 
 impl Rng {
     pub fn init() -> Self {
-        let mut hasher = DefaultHasher::new();
-        SystemTime::now()
+        let seed = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_nanos()
-            .hash(&mut hasher);
+            .as_nanos() as u64;
 
-        let h0 = hasher.finish();
-        h0.hash(&mut hasher);
-
-        let h1 = hasher.finish();
-        h1.hash(&mut hasher);
-
-        let h2 = hasher.finish();
-        h2.hash(&mut hasher);
-
-        let h3 = hasher.finish();
-
-        Self([h3, h2, h1, h0])
+        Self::from_seed(seed)
     }
 
-    pub fn from_seed(seed: [u64; 4]) -> Self {
-        Self(seed)
+    pub fn from_seed(mut seed: u64) -> Self {
+        // splitmix64 generator - credits to Sebastiano Vigna (vigna@acm.org)
+        let mut next = || {
+            seed = seed.wrapping_add(0x9e3779b97f4a7c15);
+
+            let mut z = seed;
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+
+            z ^ (z >> 31)
+        };
+
+        Self {
+            state: [next(), next(), next(), next()],
+            buffer: 0,
+            buffer_remaining: 0,
+        }
     }
 
-    pub fn u64(&mut self) -> u64 {
-        // SAFETY Iterator will never return None
-        self.next().expect("RNG is infallible")
+    pub fn from_state(state: [u64; 4]) -> Self {
+        Self {
+            state,
+            buffer: 0,
+            buffer_remaining: 0,
+        }
     }
 
-    /// Returns random value in range `0..n`.
-    pub fn next_bounded(&mut self, s: u64) -> u64 {
-        // Implements Lemire's method for unbiased random number generation
+    fn u64(&mut self) -> u64 {
+        // xoshiro256++ generator - credits to Sebastiano Vigna (vigna@acm.org)
+        const R: u32 = 23;
+        const A: u32 = 17;
+        const B: u32 = 45;
 
-        let mut x = self.u64();
-        let mut m = (x as u128) * (s as u128);
-        let mut l = m as u64;
+        let result = self.state[0]
+            .wrapping_add(self.state[3])
+            .rotate_left(R)
+            .wrapping_add(self.state[0]);
+
+        let t = self.state[1] << A;
+
+        self.state[2] ^= self.state[0];
+        self.state[3] ^= self.state[1];
+        self.state[1] ^= self.state[2];
+        self.state[0] ^= self.state[3];
+
+        self.state[2] ^= t;
+        self.state[3] = self.state[3].rotate_left(B);
+
+        result
+    }
+
+    pub fn u8(&mut self) -> u8 {
+        if self.buffer_remaining == 0 {
+            self.buffer = self.u64();
+            self.buffer_remaining = 8;
+        }
+        let r = self.buffer as u8;
+        self.buffer >>= 8;
+        self.buffer_remaining -= 1;
+        r
+    }
+
+    pub fn u8_in(&mut self, range: Range<u8>) -> u8 {
+        let s = (range.end - range.start) as u16;
+
+        // Lemire's method for unbiased numbers
+        let mut x = self.u8() as u16;
+        let mut m = x * s;
+        let mut l = m;
 
         if l < s {
             let t = s.wrapping_neg() % s;
             while l < t {
-                x = self.u64();
-                m = (x as u128) * (s as u128);
-                l = m as u64;
+                x = self.u8() as u16;
+                m = x * s;
+                l = m;
             }
         }
 
-        (m >> 64) as u64
+        range.start + (m >> 8) as u8
     }
 }
 
@@ -63,32 +106,7 @@ impl fmt::Display for Rng {
         write!(
             f,
             "seed: 0x{:x} 0x{:x} 0x{:x} 0x{:x}",
-            self.0[0], self.0[1], self.0[2], self.0[3]
+            self.state[0], self.state[1], self.state[2], self.state[3]
         )
-    }
-}
-
-impl Iterator for Rng {
-    type Item = u64;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // xoshiro256++
-        let result = self.0[0]
-            .wrapping_add(self.0[3])
-            .rotate_left(23)
-            .wrapping_add(self.0[0]);
-
-        let t = self.0[1] << 17;
-
-        self.0[2] ^= self.0[0];
-        self.0[3] ^= self.0[1];
-        self.0[1] ^= self.0[2];
-        self.0[0] ^= self.0[3];
-
-        self.0[2] ^= t;
-
-        self.0[3] = self.0[3].rotate_left(45);
-
-        Some(result)
     }
 }
