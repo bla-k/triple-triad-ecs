@@ -1,3 +1,5 @@
+// =========================================== CardId ==============================================
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CardId(u8);
 
@@ -21,6 +23,13 @@ impl CardId {
             "CardId constructed out of bounds: {}",
             index
         );
+        Self(index)
+    }
+
+    /// # Safety
+    ///
+    /// Caller must ensure `index < CardId::MAX`.
+    pub(crate) const fn new_const(index: u8) -> Self {
         Self(index)
     }
 

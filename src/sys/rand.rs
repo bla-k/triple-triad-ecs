@@ -2,6 +2,22 @@ use std::fmt;
 use std::ops::Range;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Shuffles `collection` in place.
+pub fn shuffle<T>(rng: &mut Rng, collection: &mut [T], k: usize) {
+    debug_assert!(
+        collection.len() > k,
+        "Cannot shuffle more items than exist in collection"
+    );
+
+    // fisher-yates shuffle
+    for j in 0..k {
+        let r = rng.u8_in(j as u8..collection.len() as u8) as usize;
+        collection.swap(j, r);
+    }
+}
+
+// ============================================ Rng ================================================
+
 pub struct Rng {
     state: [u64; 4],
     buffer: u64,

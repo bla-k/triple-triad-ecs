@@ -1,9 +1,10 @@
 use sdl2::rect::Rect;
-use std::array;
 use triple_triad::{
     core::{
-        battle::{Battle, BattleSetup, Player},
+        battle::{Battle, BattleSetup, Player, Pool},
+        card_pools::POOL_BEGINNER,
         data::CardId,
+        player::Inventory,
     },
     data::CardDb,
     event::{self, Command},
@@ -73,9 +74,16 @@ fn main() -> Result<(), String> {
 
     println!("{}", rng);
 
+    let mut inventory = Inventory::default();
+    for j in 99..110 {
+        inventory.add(unsafe { CardId::new_unchecked(j) }, 1);
+    }
+
+    let pool: Pool = inventory.iter_distinct().collect();
+
     let battle_setup = BattleSetup {
-        p1_hand: array::from_fn(|_| unsafe { CardId::new_unchecked(rng.u8_in(0..CardId::MAX)) }),
-        p2_hand: array::from_fn(|_| unsafe { CardId::new_unchecked(rng.u8_in(0..CardId::MAX)) }),
+        p1_hand: pool.draw_hand(&mut rng),
+        p2_hand: POOL_BEGINNER.draw_hand(&mut rng),
     };
 
     let Battle {

@@ -1,10 +1,15 @@
 use std::{
+    array,
+    borrow::Cow,
     iter::FusedIterator,
     ops::{Index, IndexMut, Not},
     slice::Iter,
 };
 
-use crate::core::data::CardId;
+use crate::{
+    core::data::CardId,
+    sys::rand::{Rng, shuffle},
+};
 
 pub const BOARD_SIZE: usize = 3;
 
@@ -294,4 +299,30 @@ pub enum TurnPhase {
 pub enum BattleResult {
     Draw,
     Win(Player),
+}
+
+// ============================================ Pool ===============================================
+
+/// Card pool for NPC starting hand selection.
+pub struct Pool<'a>(pub Cow<'a, [CardId]>);
+
+impl<'a> Pool<'a> {
+    pub fn draw_hand(&self, rng: &mut Rng) -> [CardId; HAND_SIZE] {
+        debug_assert!(
+            self.0.len() > HAND_SIZE,
+            "Pool contains less cards than hand size: {}",
+            self.0.len()
+        );
+
+        let mut pool: Vec<CardId> = self.0.to_vec();
+        shuffle(rng, &mut pool, HAND_SIZE);
+        array::from_fn(|j| pool[j])
+    }
+}
+
+impl<'a> FromIterator<CardId> for Pool<'a> {
+    fn from_iter<T: IntoIterator<Item = CardId>>(iter: T) -> Self {
+        let vec: Vec<CardId> = iter.into_iter().collect();
+        Self(Cow::Owned(vec))
+    }
 }
