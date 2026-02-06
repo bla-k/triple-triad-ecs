@@ -10,7 +10,11 @@ use crate::{
     rules::{wrap_decr, wrap_incr},
     ui::Theme,
 };
-use sdl2::{EventPump, keyboard::Keycode, rect::Rect};
+use sdl2::{
+    EventPump,
+    keyboard::{Keycode, Mod},
+    rect::Rect,
+};
 use std::collections::VecDeque;
 
 pub fn input_system(commands: &mut VecDeque<Command>, event_pump: &mut EventPump) {
@@ -18,25 +22,30 @@ pub fn input_system(commands: &mut VecDeque<Command>, event_pump: &mut EventPump
 
     for evt in event_pump.poll_iter() {
         if let Some(command) = match evt {
-            Event::Quit { .. } => Some(Command::Quit),
+            Event::Quit { .. }
+            | Event::KeyDown {
+                keycode: Some(Keycode::Q),
+                keymod: Mod::LCTRLMOD,
+                ..
+            } => Some(Command::Quit),
 
             Event::KeyDown {
-                keycode: Some(Keycode::Down),
+                keycode: Some(Keycode::Down | Keycode::J),
                 ..
             } => Some(Command::MoveCursor(Direction::Down)),
 
             Event::KeyDown {
-                keycode: Some(Keycode::Left),
+                keycode: Some(Keycode::Left | Keycode::H),
                 ..
             } => Some(Command::MoveCursor(Direction::Left)),
 
             Event::KeyDown {
-                keycode: Some(Keycode::Right),
+                keycode: Some(Keycode::Right | Keycode::L),
                 ..
             } => Some(Command::MoveCursor(Direction::Right)),
 
             Event::KeyDown {
-                keycode: Some(Keycode::Up),
+                keycode: Some(Keycode::Up | Keycode::K),
                 ..
             } => Some(Command::MoveCursor(Direction::Up)),
 
